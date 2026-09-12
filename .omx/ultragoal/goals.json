@@ -52,7 +52,9 @@
         ".omx/ultragoal/ledger.jsonl"
       ],
       "stride": "task",
-      "stop_condition": "Workspace boots; both apps have package.json + tsconfig + at least one passing trivial test; README skeleton exists."
+      "stop_condition": "Workspace boots; both apps have package.json + tsconfig + at least one passing trivial test; README skeleton exists.",
+      "status": "complete",
+      "completed_at": "2026-09-12T15:31:39.934236Z"
     },
     {
       "id": "G2",
@@ -107,7 +109,9 @@
         ".omx/ultragoal/ledger.jsonl"
       ],
       "stride": "task",
-      "stop_condition": "All listed AC tests pass; F1/F2/F3 integration tests pass; YAML authority model holds."
+      "stop_condition": "All listed AC tests pass; F1/F2/F3 integration tests pass; YAML authority model holds.",
+      "status": "complete",
+      "completed_at": "2026-09-12T15:31:39.934236Z"
     },
     {
       "id": "G3",
@@ -157,7 +161,9 @@
         ".omx/ultragoal/ledger.jsonl"
       ],
       "stride": "task",
-      "stop_condition": "All listed AC tests pass; R11 regression test passes; R14 lock test passes."
+      "stop_condition": "All listed AC tests pass; R11 regression test passes; R14 lock test passes.",
+      "status": "complete",
+      "completed_at": "2026-09-12T15:31:39.934236Z"
     },
     {
       "id": "G4",
@@ -227,7 +233,9 @@
         ".omx/ultragoal/ledger.jsonl"
       ],
       "stride": "deliverable",
-      "stop_condition": "All Phase 3 AC tests pass; README finalized; full A1\u2013H1 coverage green."
+      "stop_condition": "All Phase 3 AC tests pass; README finalized; full A1\u2013H1 coverage green.",
+      "status": "complete",
+      "completed_at": "2026-09-12T15:31:39.934236Z"
     }
   ],
   "final_gate": {
@@ -238,6 +246,8 @@
       "Architecture-invariant audit: TabHost does NOT import gateways; no-auth-in-MVP; default-bind preserved; YAML-as-authority preserved; tab-decoupling preserved",
       "All 18 AC + 14 risks verified",
       "Final ledger checkpoint with cleaner + verification + review + invariant evidence"
-    ]
+    ],
+    "passed": true,
+    "passed_at": "2026-09-12T15:31:39.934236Z"
   }
 }
