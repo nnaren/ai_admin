@@ -1,0 +1,28 @@
+{
+  "name": "gateway-control-panel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local dev dashboard for self-managed AI gateway processes. Single-operator, localhost-first, YAML-authoritative.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "pnpm -r run lint",
+    "test": "pnpm -r run test",
+    "test:unit": "pnpm -r run test:unit",
+    "test:integration": "pnpm -F api run test:integration",
+    "test:e2e": "pnpm -F web run test:e2e",
+    "clean": "pnpm -r exec rm -rf dist coverage"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "eslint": "^9.16.0"
+  }
+}

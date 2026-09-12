@@ -1,0 +1,118 @@
+:root {
+  --bg: #0f1115;
+  --panel: #1a1d24;
+  --border: #2a2e38;
+  --text: #e6e9ef;
+  --muted: #8a91a0;
+  --ok: #4ade80;
+  --warn: #f59e0b;
+  --err: #f87171;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.gcp-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.gcp-header {
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.gcp-header h1 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.gcp-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.gcp-tabs button {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  padding: 10px 20px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+}
+.gcp-tabs button.active {
+  color: var(--text);
+  border-bottom: 2px solid var(--text);
+}
+
+.gcp-tab-content {
+  padding: 24px;
+  flex: 1;
+}
+
+.gcp-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.gcp-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+.gcp-card .title {
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.gcp-card .badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.gcp-card .badge.ok { background: var(--ok); color: #052e16; }
+.gcp-card .badge.warn { background: var(--warn); color: #422006; }
+.gcp-card .badge.err { background: var(--err); color: #450a0a; }
+.gcp-card .field {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.gcp-card .field .value { color: var(--text); }
+.gcp-card .actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+.gcp-card .actions button {
+  flex: 1;
+  background: var(--border);
+  border: 0;
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+.gcp-card .actions button:hover { background: #3a3f4d; }
+.gcp-card .actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+.gcp-card .actions button.danger { background: var(--err); color: #450a0a; }

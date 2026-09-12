@@ -1,0 +1,243 @@
+{
+  "$schema": "omx.ultragoal.goals/v1",
+  "mode": "aggregate-codex-goal",
+  "aggregate_codex_goal_id": "01a09613-a514-7493-b7ed-564582502f34",
+  "interview_id": "gateway-control-panel-20260912T081300Z",
+  "prd_path": ".omx/plans/prd-gateway-control-panel.md",
+  "test_spec_path": ".omx/plans/test-spec-gateway-control-panel.md",
+  "spec_path": ".omx/specs/deep-interview-gateway-control-panel.md",
+  "ralplan_state_path": ".omx/state/ralplan-gateway-control-panel.json",
+  "ledger_path": ".omx/ultragoal/ledger.jsonl",
+  "goals": [
+    {
+      "id": "G1",
+      "title": "Phase 0 \u2014 Workspace bootstrap",
+      "phase": 0,
+      "objective": "Initialize the gateway-control-panel monorepo: git, pnpm workspaces (apps/api + apps/web), TypeScript configs, ESLint + Prettier, Vitest + Playwright installed with one trivial passing test each, README skeleton (threat model incl. no-auth-on-LAN + foreground-command expectation, YAML schema, tab extension contract).",
+      "acceptance_criteria": [],
+      "primary_files": [
+        "package.json",
+        "pnpm-workspace.yaml",
+        "tsconfig.base.json",
+        "apps/api/package.json",
+        "apps/api/tsconfig.json",
+        "apps/web/package.json",
+        "apps/web/tsconfig.json",
+        ".eslintrc.cjs",
+        ".prettierrc",
+        ".gitignore",
+        "README.md",
+        "config/server.yaml.example",
+        "apps/api/test/unit/sanity.test.ts",
+        "apps/web/test/unit/sanity.test.ts"
+      ],
+      "verification_steps": [
+        "`pnpm install` succeeds",
+        "`pnpm typecheck` (or per-app equivalent) passes",
+        "`pnpm lint` passes (or no errors)",
+        "`pnpm -F api test` and `pnpm -F web test` show \u22651 trivial passing test each",
+        "`git status` shows initialized repo"
+      ],
+      "depends_on": [],
+      "blocks": [
+        "G2",
+        "G3",
+        "G4"
+      ],
+      "risks_mitigated": [
+        "R7",
+        "R11"
+      ],
+      "evidence_files": [
+        ".omx/ultragoal/ledger.jsonl"
+      ],
+      "stride": "task",
+      "stop_condition": "Workspace boots; both apps have package.json + tsconfig + at least one passing trivial test; README skeleton exists."
+    },
+    {
+      "id": "G2",
+      "title": "Phase 1 \u2014 Backend skeleton + YAML authority",
+      "phase": 1,
+      "objective": "Build the Fastify backend with YAML as single source of truth: server.yaml loader (bind/port/polling cadence), gateways.yaml loader + atomic write + chokidar watch (250ms debounce), GET/PUT/POST/DELETE /api/gateways routes that round-trip through YAML, GET /api/health, plus integration tests for A1, A2, A3, F1, F3, R12, R13.",
+      "acceptance_criteria": [
+        "A1",
+        "A2",
+        "A3",
+        "F1",
+        "F3"
+      ],
+      "primary_files": [
+        "apps/api/src/server.ts",
+        "apps/api/src/config.ts",
+        "apps/api/src/types.ts",
+        "apps/api/src/services/yamlStore.ts",
+        "apps/api/src/routes/gateways.ts",
+        "apps/api/src/routes/health.ts",
+        "apps/api/test/unit/yamlStore.authority.test.ts",
+        "apps/api/test/unit/yamlStore.reload.test.ts",
+        "apps/api/test/unit/server.no-auth.test.ts",
+        "apps/api/test/integration/server.bind.test.ts",
+        "config/server.yaml.example",
+        "config/gateways.yaml.example"
+      ],
+      "verification_steps": [
+        "`pnpm -F api test:unit` and `pnpm -F api test:integration` pass",
+        "Atomic write-tmp + fsync + rename verified by injecting a failure mid-write",
+        "Chokidar reload verified by external `fs.writeFileSync` to the YAML",
+        "Default bind `127.0.0.1:8787` verified; `bind: 0.0.0.0` verified",
+        "No auth middleware registered (route inspection test)",
+        "EADDRINUSE surfaced verbatim when port is held",
+        "Missing `gateways.yaml` boots cleanly with empty list"
+      ],
+      "depends_on": [
+        "G1"
+      ],
+      "blocks": [
+        "G3",
+        "G4"
+      ],
+      "risks_mitigated": [
+        "R1",
+        "R8",
+        "R9",
+        "R12",
+        "R13"
+      ],
+      "evidence_files": [
+        ".omx/ultragoal/ledger.jsonl"
+      ],
+      "stride": "task",
+      "stop_condition": "All listed AC tests pass; F1/F2/F3 integration tests pass; YAML authority model holds."
+    },
+    {
+      "id": "G3",
+      "title": "Phase 2 \u2014 Process supervision + health probing + start/stop routes",
+      "phase": 2,
+      "objective": "Implement supervisor (spawn + PID capture; stopCommand execution; SIGTERM 5s grace then tree-kill; read-path process.kill(pid,0) authoritative liveness probe; per-id lock for R14), health probe module (scheduled HTTP GET, 2s timeout), POST /api/gateways/:id/{start,stop} routes, /api/gateways now merges YAML + supervisor + health. Tests cover C1, C2, C3 (incl. R11 bash-fork regression), G1, G2.",
+      "acceptance_criteria": [
+        "C1",
+        "C2",
+        "C3",
+        "G1",
+        "G2"
+      ],
+      "primary_files": [
+        "apps/api/src/services/supervisor.ts",
+        "apps/api/src/services/healthProbe.ts",
+        "apps/api/src/routes/gateways.ts (extended with start/stop + merge)",
+        "apps/api/test/integration/supervisor.failures.test.ts",
+        "apps/api/test/integration/healthprobe.ok.test.ts",
+        "apps/api/test/integration/healthprobe.fail.test.ts",
+        "apps/api/test/integration/start-stop.routes.test.ts",
+        "apps/api/test/fixtures/gateways.daemon.yaml"
+      ],
+      "verification_steps": [
+        "Foreground startCommand \u2192 PID captured within 3s, `process.kill(pid, 0)` succeeds",
+        "Stop \u2192 PID cleared within 5s, external `process.kill(pid, 0)` throws ESRCH",
+        "Bash-fork startCommand (`bash -c 'sleep 60 &'`) \u2192 card reports `running=false` (R11 regression)",
+        "Unreachable healthUrl \u2192 ok=false + error string within 2.5s",
+        "OK healthUrl \u2192 ok=true + HTTP code 200",
+        "Concurrent double-click Start \u2192 second returns HTTP 409",
+        "Concurrent double-click Stop on already-stopped \u2192 no-op"
+      ],
+      "depends_on": [
+        "G2"
+      ],
+      "blocks": [
+        "G4"
+      ],
+      "risks_mitigated": [
+        "R3",
+        "R4",
+        "R5",
+        "R11",
+        "R14"
+      ],
+      "evidence_files": [
+        ".omx/ultragoal/ledger.jsonl"
+      ],
+      "stride": "task",
+      "stop_condition": "All listed AC tests pass; R11 regression test passes; R14 lock test passes."
+    },
+    {
+      "id": "G4",
+      "title": "Phase 3 \u2014 Frontend + tab system + gateways UI + e2e + final README",
+      "phase": 3,
+      "objective": "Build the Vite + React + TS SPA: api/client.ts typed wrappers + 3s polling, generic TabHost with registry (one stub tab + gateways tab), GatewaysTab + GatewayCard with start/stop/edit/add/delete, Vite dev proxy to backend, Playwright e2e smoke (H1) + A3/B1/B2/C1/C2/D UI tests + TabHost import-boundary unit test, README finalized (YAML schema documented; tab extension contract).",
+      "acceptance_criteria": [
+        "A1",
+        "A3",
+        "B1",
+        "B2",
+        "C1",
+        "C2",
+        "D",
+        "E1",
+        "E2",
+        "E3",
+        "F1",
+        "F2",
+        "G1",
+        "G2",
+        "H1"
+      ],
+      "primary_files": [
+        "apps/web/index.html",
+        "apps/web/vite.config.ts",
+        "apps/web/src/main.tsx",
+        "apps/web/src/App.tsx",
+        "apps/web/src/api/client.ts",
+        "apps/web/src/tabs/registry.ts",
+        "apps/web/src/tabs/TabHost.tsx",
+        "apps/web/src/tabs/stub/StubTab.tsx",
+        "apps/web/src/tabs/gateways/GatewaysTab.tsx",
+        "apps/web/src/tabs/gateways/GatewayCard.tsx",
+        "apps/web/src/types.ts",
+        "apps/web/src/styles.css",
+        "apps/web/test/unit/registry.extension.test.ts",
+        "apps/web/test/unit/tabhost.import-boundary.test.ts",
+        "apps/web/test/unit/tabhost.resilience.test.tsx",
+        "apps/web/playwright.config.ts",
+        "apps/web/test/e2e/smoke.spec.ts",
+        "apps/web/test/e2e/card-fields.spec.ts",
+        "apps/web/test/e2e/start-stop.spec.ts",
+        "apps/web/test/e2e/ui-edit-roundtrip.spec.ts",
+        "README.md (finalized)"
+      ],
+      "verification_steps": [
+        "`pnpm -F web test:unit` and `pnpm -F web test:e2e` pass",
+        "TabHost import-boundary test: string-grep confirms zero `gateways` references in `TabHost.tsx`",
+        "Registry-extension test: two tabs (gateways + stub) registered without modifying `TabHost.tsx`",
+        "E2E: from clean clone, `pnpm install && pnpm dev` brings up panel with \u22652 sample gateways",
+        "E2E: external YAML edit appears on card within \u22641.5s",
+        "E2E: UI edit round-trips through YAML (file reflects change)",
+        "E2E: start/stop transitions happen within \u22645s",
+        "Vite dev proxy forwards `/api/*` to Fastify on `127.0.0.1:8787`",
+        "README documents threat model, YAML schema, tab extension contract"
+      ],
+      "depends_on": [
+        "G3"
+      ],
+      "blocks": [],
+      "risks_mitigated": [
+        "R6",
+        "R10 (documented)"
+      ],
+      "evidence_files": [
+        ".omx/ultragoal/ledger.jsonl"
+      ],
+      "stride": "deliverable",
+      "stop_condition": "All Phase 3 AC tests pass; README finalized; full A1\u2013H1 coverage green."
+    }
+  ],
+  "final_gate": {
+    "name": "Final quality gate",
+    "steps": [
+      "ai-slop-cleaner on changed files",
+      "code-review (architect + code-reviewer independent lanes)",
+      "Architecture-invariant audit: TabHost does NOT import gateways; no-auth-in-MVP; default-bind preserved; YAML-as-authority preserved; tab-decoupling preserved",
+      "All 18 AC + 14 risks verified",
+      "Final ledger checkpoint with cleaner + verification + review + invariant evidence"
+    ]
+  }
+}

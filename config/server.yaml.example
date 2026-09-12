@@ -1,0 +1,5 @@
+bind: 127.0.0.1
+port: 8787
+pollingCadenceMs: 3000
+chokidarDebounceMs: 250
+healthProbeTimeoutMs: 2000

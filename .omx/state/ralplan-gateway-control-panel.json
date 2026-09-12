@@ -1,0 +1,134 @@
+{
+  "active": false,
+  "current_phase": "ralplan-complete",
+  "mode": "ralplan",
+  "state": {
+    "interview_id": "gateway-control-panel-20260912T081300Z",
+    "profile": "ralplan-standalone",
+    "type": "greenfield",
+    "slug": "gateway-control-panel",
+    "rounds": [
+      {
+        "id": "01a09624-2596-73e3-bee8-d7258d9f2880",
+        "role": "architect",
+        "verdict": "ITERATE",
+        "iterations": 1,
+        "issues": [
+          "Read-path liveness probe (process.kill(pid,0)) needed at GET /api/gateways",
+          "Foreground-command expectation must be documented (R11)",
+          "E2 Vitest test must register two tabs to exercise registry-only extension"
+        ]
+      },
+      {
+        "id": "01a09629-573d-7b82-b5b3-a173ca8c6df7",
+        "role": "architect",
+        "verdict": "APPROVE",
+        "iterations": 2,
+        "resolved": [
+          "Phase 2 supervisor bullet updated",
+          "Phase 0 README + R11 added",
+          "E2 row + C3/R11 linkage added"
+        ]
+      },
+      {
+        "id": "01a0962a-02fa-7b21-9310-122bc46f7492",
+        "role": "critic",
+        "verdict": "APPROVE",
+        "iterations": 1,
+        "criteria_passed": [
+          "C1",
+          "C2",
+          "C3",
+          "C4",
+          "C5",
+          "C6"
+        ],
+        "non_blocking_observations": [
+          "A1 test type design-leaning; complement with e2e frontend-bypass check (added to test-spec)",
+          "Missing risk: port collision (added R12)",
+          "Missing risk: concurrent start/stop (added R14)",
+          "Missing risk: empty yaml first-run (added R13)",
+          "E2 mechanism: build-time check (test-spec uses string-grep)",
+          "D2 prose: combination rationale clarified"
+        ]
+      }
+    ],
+    "review_cycle": 1,
+    "current_ambiguity": 0.2,
+    "context_snapshot_path": ".omx/context/gateway-control-panel-20260912T081300Z.md",
+    "interview_path": ".omx/interviews/gateway-control-panel-20260912T081300Z.md",
+    "spec_path": ".omx/specs/deep-interview-gateway-control-panel.md",
+    "prd_path": ".omx/plans/prd-gateway-control-panel.md",
+    "test_spec_path": ".omx/plans/test-spec-gateway-control-panel.md"
+  },
+  "planning_artifacts": {
+    "prd": ".omx/plans/prd-gateway-control-panel.md",
+    "test_spec": ".omx/plans/test-spec-gateway-control-panel.md"
+  },
+  "ralplan_architect_review": {
+    "verdict": "APPROVE",
+    "review_iterations": 2,
+    "final_review_agent_id": "01a09629-573d-7b82-b5b3-a173ca8c6df7",
+    "rationale": "All three ITERATE items (read-path probe, foreground-command doc + R11, E2 test shape) substantively addressed in PRD; binding E3 constraint preserved; all 18 acceptance criteria mapped; risks R1-R11 concrete with test-enforced mitigations."
+  },
+  "ralplan_critic_review": {
+    "verdict": "APPROVE",
+    "criteria_passed": [
+      "C1",
+      "C2",
+      "C3",
+      "C4",
+      "C5",
+      "C6"
+    ],
+    "non_blocking_observations_addressed": true,
+    "final_review_agent_id": "01a0962a-02fa-7b21-9310-122bc46f7492",
+    "rationale": "Principle-option consistency, fair alternatives, risk mitigation clarity, testable acceptance criteria, concrete verification steps, and spec-binding constraint preservation all PASS."
+  },
+  "ralplan_execution_handoff": {
+    "authorized": true,
+    "reason": "Architect APPROVE (iter 2) + Critic APPROVE (iter 1). All 6 critic criteria PASS. PRD + test-spec durable. All 18 acceptance criteria and 14 risks mapped to concrete tests.",
+    "authorized_at": "2026-09-12T15:12:42.306337Z",
+    "session_id": "codex-desktop-ralplan-gateway-control-panel",
+    "review_cycle": 1,
+    "source": "user"
+  },
+  "ralplan_consensus_gate": {
+    "complete": true,
+    "completed_at": "2026-09-12T15:12:42.306337Z",
+    "host_verified": false,
+    "notes": "Locally authored lifecycle evidence (Architect + Critic approvals); not a host-security claim. Per ralplan skill: 'Locally authored JSON/env/prompt/tracker/transcript/receipt-shaped evidence must never be described as host-issued authority.'"
+  },
+  "pending_user_lane_choice": [
+    {
+      "lane": "$ultragoal",
+      "description": "Convert spec + PRD + test-spec into durable goal-mode work with sequential completion tracking. Default recommendation.",
+      "rationale": "Spec is execution-ready; durable goal tracking maximizes leverage and surfaces disagreement on success criteria early."
+    },
+    {
+      "lane": "$autopilot",
+      "description": "Skip the planning consensus gate and go directly to plan + execute.",
+      "rationale": "Already have a strong PRD; this lane assumes PRD is enough to drive execution without an additional Ultragoal wrapper."
+    },
+    {
+      "lane": "$team",
+      "description": "Multi-agent coordinated execution across backend / frontend / docs lanes.",
+      "rationale": "Workload may benefit from parallel lanes (apps/api, apps/web, README + fixtures) but coordination overhead may not be worth it for an MVP."
+    },
+    {
+      "lane": "$ralph",
+      "description": "Persistent single-owner completion loop.",
+      "rationale": "Only if you specifically want Ralph's narrow persistence loop; not recommended when Ultragoal is available."
+    },
+    {
+      "lane": "ralplan --interactive",
+      "description": "Re-enter planning with --interactive flag to confirm at each gate.",
+      "rationale": "Already passed consensus; only useful if you want to revisit a specific architectural choice."
+    },
+    {
+      "lane": "refine further",
+      "description": "Continue Socratic interview or revisit PRD details.",
+      "rationale": "Spec is below threshold; residual uncertainty on A1-H1 acceptance criteria is the single highest-cost failure mode."
+    }
+  ]
+}
