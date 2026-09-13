@@ -15,7 +15,12 @@ test-results/
 
 # Runtime / config (user-managed, not committed)
 config/gateways.yaml
+config/usage.yaml
 config/server.yaml
+apps/api/config/gateways.yaml
+apps/api/config/usage.yaml
+apps/api/config/server.yaml
+.omc/
 *.log
 
 # OS / editor

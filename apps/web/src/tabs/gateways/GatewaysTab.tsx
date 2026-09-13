@@ -4,10 +4,12 @@ import {
   startGateway,
   stopGateway,
   addGateway,
+  updateGateway,
   deleteGateway,
 } from '../../api/client.js';
 import type { GatewayStatus, Gateway } from '../../types.js';
 import { GatewayCard } from './GatewayCard.js';
+import { GatewayForm } from './GatewayForm.js';
 
 const POLL_MS = 3000;
 
@@ -16,6 +18,7 @@ export function GatewaysTab(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [editing, setEditing] = useState<Gateway | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -76,6 +79,24 @@ export function GatewaysTab(): JSX.Element {
     [refresh],
   );
 
+  const handleUpdate = useCallback(
+    async (gw: Gateway) => {
+      try {
+        await updateGateway(gw.id, gw);
+        setEditing(null);
+        await refresh();
+      } catch (err) {
+        setError((err as Error).message);
+      }
+    },
+    [refresh],
+  );
+
+  const handleConfigure = useCallback((gateway: Gateway) => {
+    setShowAdd(false);
+    setEditing((current) => (current?.id === gateway.id ? null : gateway));
+  }, []);
+
   const handleDelete = useCallback(
     async (id: string) => {
       try {
@@ -97,12 +118,26 @@ export function GatewaysTab(): JSX.Element {
       )}
 
       <div style={{ marginBottom: 16 }}>
-        <button data-testid="add-gateway" onClick={() => setShowAdd((s) => !s)}>
-          {showAdd ? 'Cancel' : 'Add gateway'}
+        <button
+          data-testid="add-gateway"
+          onClick={() => {
+            setEditing(null);
+            setShowAdd(true);
+          }}
+        >
+          Add gateway
         </button>
       </div>
 
-      {showAdd && <AddGatewayForm onSubmit={handleAdd} />}
+      {showAdd && <GatewayForm onSubmit={handleAdd} onCancel={() => setShowAdd(false)} />}
+      {editing && (
+        <GatewayForm
+          key={editing.id}
+          initial={editing}
+          onSubmit={handleUpdate}
+          onCancel={() => setEditing(null)}
+        />
+      )}
 
       {statuses.length === 0 ? (
         <p style={{ color: 'var(--muted)' }}>No gateways configured. Add one or edit config/gateways.yaml.</p>
@@ -114,6 +149,7 @@ export function GatewaysTab(): JSX.Element {
               status={s}
               onStart={handleStart}
               onStop={handleStop}
+              onConfigure={handleConfigure}
               busy={busyId === s.gateway.id}
             />
           ))}
@@ -131,36 +167,5 @@ export function GatewaysTab(): JSX.Element {
         </button>
       )}
     </div>
-  );
-}
-
-function AddGatewayForm({ onSubmit }: { onSubmit: (gw: Gateway) => Promise<void> }): JSX.Element {
-  const [id, setId] = useState('');
-  const [name, setName] = useState('');
-  const [startCommand, setStartCommand] = useState('');
-  const [port, setPort] = useState('');
-
-  return (
-    <form
-      data-testid="add-form"
-      className="gcp-card"
-      style={{ marginBottom: 16, display: 'grid', gap: 8 }}
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (!id || !name || !startCommand) return;
-        void onSubmit({
-          id,
-          name,
-          startCommand,
-          port: port ? Number(port) : undefined,
-        });
-      }}
-    >
-      <label>id <input data-testid="add-id" value={id} onChange={(e) => setId(e.target.value)} required /></label>
-      <label>name <input data-testid="add-name" value={name} onChange={(e) => setName(e.target.value)} required /></label>
-      <label>start command <input data-testid="add-start" value={startCommand} onChange={(e) => setStartCommand(e.target.value)} required /></label>
-      <label>port (optional) <input data-testid="add-port" value={port} onChange={(e) => setPort(e.target.value)} /></label>
-      <button type="submit" data-testid="add-submit">Save</button>
-    </form>
   );
 }

@@ -26,7 +26,7 @@ export function registerGatewayRoutes(
 
   app.get('/api/gateways', async (): Promise<GatewayStatus[]> => {
     const entries = store.list();
-    return entries.map((gateway) => buildStatus(gateway, supervisor, probe));
+    return Promise.all(entries.map((gateway) => buildStatus(gateway, supervisor, probe)));
   });
 
   app.post<{ Body: Gateway }>('/api/gateways', async (req, reply) => {
@@ -103,19 +103,23 @@ export function registerGatewayRoutes(
   });
 }
 
-function buildStatus(
+async function buildStatus(
   gateway: Gateway,
   supervisor: Supervisor,
   probe: HealthProbe,
-): GatewayStatus {
-  const pid = supervisor.getLivePid(gateway.id);
+): Promise<GatewayStatus> {
   const health = probe.get(gateway.id);
+  const pid = (await supervisor.reconcile(gateway)) ?? supervisor.getLivePid(gateway.id);
+  const reachable = health?.ok === true;
+  const running = pid !== undefined || reachable;
+  const lastError = running ? undefined : supervisor.getLastError(gateway.id);
   const status: GatewayStatus = {
     gateway,
-    running: pid !== undefined,
+    running,
   };
   if (pid !== undefined) status.pid = pid;
   if (health) status.health = health;
+  if (lastError) status.lastError = lastError;
   return status;
 }
 

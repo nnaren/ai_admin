@@ -5,11 +5,14 @@ import { YamlStore } from './services/yamlStore.js';
 import { Supervisor } from './services/supervisor.js';
 import { HealthProbe } from './services/healthProbe.js';
 import { registerGatewayRoutes } from './routes/gateways.js';
+import { registerUsageRoutes } from './routes/usage.js';
+import { UsageStore } from './services/usageStore.js';
 import type { ServerConfig } from './types.js';
 
 export interface BootOptions {
   configPath?: string;
   yamlPath?: string;
+  usagePath?: string;
   configOverride?: Partial<ServerConfig>;
 }
 
@@ -25,6 +28,8 @@ export async function boot(opts: BootOptions = {}): Promise<FastifyInstance> {
 
   const yamlPath =
     opts.yamlPath ?? path.resolve(process.cwd(), 'config', 'gateways.yaml');
+  const usagePath =
+    opts.usagePath ?? path.resolve(process.cwd(), 'config', 'usage.yaml');
 
   const app = Fastify({ logger: { level: 'info' } });
   const supervisor = new Supervisor();
@@ -43,7 +48,11 @@ export async function boot(opts: BootOptions = {}): Promise<FastifyInstance> {
 
   for (const g of store.list()) probe.probe(g);
 
+  const usageStore = new UsageStore(usagePath);
+  await usageStore.load();
+
   registerGatewayRoutes(app, store, supervisor, probe);
+  registerUsageRoutes(app, usageStore);
 
   app.addHook('onClose', async () => {
     await store.close();

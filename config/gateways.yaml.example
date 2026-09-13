@@ -5,3 +5,5 @@
   startCommand: "/bin/sh -c 'exec sleep 300'"
   stopCommand: "/bin/sh -c 'kill -TERM $PID'"
   healthUrl: "http://127.0.0.1:9000/health"
+  openUrl: "http://127.0.0.1:9000/"
+  color: blue

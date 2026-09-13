@@ -40,6 +40,8 @@ A sample `config/gateways.yaml` is provided. Edit it freely — the panel picks 
   startCommand: "/bin/sh -c 'exec sleep 300'"   # required
   stopCommand: "/bin/sh -c 'kill -TERM $PID'"  # optional; if missing, SIGTERM by PID is the fallback
   healthUrl: "http://127.0.0.1:9000/health"    # optional; probed every 3s
+  openUrl: "http://127.0.0.1:9000/"            # optional; Open button target when running
+  color: blue                                  # optional; blue|green|amber|rose|violet|cyan|slate
 ```
 
 `config/server.yaml`:
@@ -47,7 +49,7 @@ A sample `config/gateways.yaml` is provided. Edit it freely — the panel picks 
 ```yaml
 bind: 127.0.0.1   # or 0.0.0.0 for LAN opt-in
 port: 8787
-pollingCadenceMs: 3000
+pollingCadenceMs: 300000  # health probe interval (5 min)
 chokidarDebounceMs: 250
 healthProbeTimeoutMs: 2000
 ```

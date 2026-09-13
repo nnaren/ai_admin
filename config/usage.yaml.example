@@ -1,0 +1,9 @@
+# Copy to apps/api/config/usage.yaml (API cwd is apps/api).
+# Prefer adding accounts from the Usage tab. apiKey is stored here and never sent to the browser.
+- id: minimax-cn
+  name: MiniMax
+  provider: minimax
+  region: cn # cn | global
+  kind: package
+  color: rose
+  apiKey: sk-cp-replace-me

@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import treeKill from 'tree-kill';
 import type { Gateway } from '../types.js';
+import { findListenerPid, listenPort } from './listenPort.js';
 
 /**
  * Process supervisor for gateway start/stop.
@@ -17,14 +18,17 @@ import type { Gateway } from '../types.js';
  * 'already-running'; concurrent stop of an already-stopped gateway is a no-op.
  */
 type SupervisorState = {
-  child: ChildProcess;
+  child?: ChildProcess;
   pid: number;
   startedAt: string;
+  /** True when we attached to a process we did not spawn (R10). */
+  adopted?: boolean;
 };
 
 export class Supervisor {
   private readonly running = new Map<string, SupervisorState>();
   private readonly locks = new Map<string, Promise<void>>();
+  private readonly lastErrors = new Map<string, string>();
 
   /**
    * Start a gateway. Returns the captured PID or throws.
@@ -34,6 +38,11 @@ export class Supervisor {
     try {
       if (existing && this.isAlive(existing.pid)) {
         throw new StartError(`already-running:${gateway.id}`, existing.pid);
+      }
+      const attached = await this.reconcile(gateway);
+      if (attached !== undefined) {
+        this.lastErrors.delete(gateway.id);
+        return { pid: attached };
       }
       const child = spawn(gateway.startCommand, {
         shell: true,
@@ -52,9 +61,13 @@ export class Supervisor {
         startupState.exited = { code };
       });
 
-      // Drain stdout/stderr to keep pipes from blocking.
-      child.stdout?.on('data', () => {});
-      child.stderr?.on('data', () => {});
+      let output = '';
+      const append = (buf: Buffer | string): void => {
+        output += buf.toString();
+        if (output.length > 2000) output = output.slice(-2000);
+      };
+      child.stdout?.on('data', append);
+      child.stderr?.on('data', append);
 
       // Require the process to be alive for 500ms straight before declaring
       // it started. This filters out shell wrappers that exit immediately
@@ -64,13 +77,19 @@ export class Supervisor {
       while (Date.now() < deadline) {
         const exited = startupState.exited;
         if (exited) {
-          throw new StartError(`exit-immediately:${gateway.id}`, exited.code ?? -1);
+          const recovered = await this.reconcile(gateway);
+          if (recovered !== undefined) {
+            this.lastErrors.delete(gateway.id);
+            return { pid: recovered };
+          }
+          throw this.failStart(gateway.id, `exit-immediately:${gateway.id}`, exited.code ?? -1, output);
         }
         if (this.isAlive(child.pid)) {
           if (aliveSince === null) aliveSince = Date.now();
           if (Date.now() - aliveSince >= 500) {
             // Promote: install the permanent running-state entry and
             // the permanent exit listener (which removes from the map).
+            this.lastErrors.delete(gateway.id);
             this.running.set(gateway.id, {
               child,
               pid: child.pid,
@@ -89,10 +108,19 @@ export class Supervisor {
         }
         await sleep(50);
       }
-      throw new StartError(`exit-immediately:${gateway.id}`);
+      const recovered = await this.reconcile(gateway);
+      if (recovered !== undefined) {
+        this.lastErrors.delete(gateway.id);
+        return { pid: recovered };
+      }
+      throw this.failStart(gateway.id, `exit-immediately:${gateway.id}`, undefined, output);
     } finally {
       this.unlock(gateway.id);
     }
+  }
+
+  getLastError(id: string): string | undefined {
+    return this.lastErrors.get(id);
   }
 
   /**
@@ -102,6 +130,7 @@ export class Supervisor {
   async stop(gateway: Gateway, graceMs = 5000): Promise<void> {
     await this.lockAndAcquire(gateway.id);
     try {
+      await this.reconcile(gateway);
       const state = this.running.get(gateway.id);
       if (!state) return;
       const { pid } = state;
@@ -185,9 +214,33 @@ export class Supervisor {
     return state.pid;
   }
 
-  /** Stop everything (used on server shutdown). */
+  /**
+   * Attach to a process already listening on the gateway port.
+   * Used when health is OK but the in-memory PID map was lost (R10).
+   */
+  async reconcile(gateway: Gateway): Promise<number | undefined> {
+    const live = this.getLivePid(gateway.id);
+    if (live !== undefined) return live;
+    const port = listenPort(gateway);
+    if (port === undefined) return undefined;
+    const pid = await findListenerPid(port);
+    if (pid === undefined || !this.isAlive(pid)) return undefined;
+    this.lastErrors.delete(gateway.id);
+    this.running.set(gateway.id, {
+      pid,
+      startedAt: new Date().toISOString(),
+      adopted: true,
+    });
+    return pid;
+  }
+
+  /** Stop spawned children only; leave adopted (external) processes running. */
   async shutdown(): Promise<void> {
     for (const [id, state] of this.running.entries()) {
+      if (state.adopted) {
+        this.running.delete(id);
+        continue;
+      }
       try {
         await new Promise<void>((resolve) => {
           treeKill(state.pid, 'SIGKILL', () => resolve());
@@ -218,6 +271,12 @@ export class Supervisor {
     const cur = this.locks.get(id);
     if (cur) this.locks.delete(id);
   }
+
+  private failStart(id: string, code: string, pid?: number, output?: string): StartError {
+    const err = new StartError(code, pid, output?.trim());
+    this.lastErrors.set(id, err.message);
+    return err;
+  }
 }
 
 // ---- Helpers ----
@@ -225,8 +284,8 @@ export class Supervisor {
 export class StartError extends Error {
   readonly code: string;
   readonly pid?: number;
-  constructor(code: string, pid?: number) {
-    super(code);
+  constructor(code: string, pid?: number, detail?: string) {
+    super(detail ? `${code}: ${detail}` : code);
     this.code = code;
     this.pid = pid;
   }

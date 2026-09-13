@@ -13,6 +13,22 @@ import type { Gateway } from '../types.js';
  * R9 mitigation: backend is sole writer; external edits win on next reload.
  * R13: missing file on first run returns empty list.
  */
+export async function loadYamlArray<T>(filePath: string): Promise<T[]> {
+  try {
+    const raw = await fs.readFile(filePath, 'utf8');
+    const parsed = parseYaml(raw);
+    if (parsed === null || parsed === undefined) return [];
+    if (!Array.isArray(parsed)) {
+      throw new Error(`YAML root must be an array, got ${typeof parsed}`);
+    }
+    return parsed as T[];
+  } catch (err) {
+    const e = err as NodeJS.ErrnoException;
+    if (e.code === 'ENOENT') return [];
+    throw err;
+  }
+}
+
 export class YamlStore {
   private gateways: Gateway[] = [];
   private watcher: ReturnType<typeof chokidar.watch> | null = null;

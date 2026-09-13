@@ -17,8 +17,12 @@ export interface Gateway {
   startCommand: string;
   /** Shell command string. Optional; SIGTERM-by-PID is the fallback. */
   stopCommand?: string;
-  /** Optional HTTP endpoint probed every pollingCadenceMs. */
+  /** Optional HTTP endpoint probed every pollingCadenceMs (default 5 min). */
   healthUrl?: string;
+  /** Optional official page to open from the card. Falls back to healthUrl origin or port. */
+  openUrl?: string;
+  /** Card accent color name. */
+  color?: string;
 }
 
 export interface HealthResult {
@@ -31,7 +35,7 @@ export interface HealthResult {
 
 export interface GatewayStatus {
   gateway: Gateway;
-  /** True iff the supervisor has a live PID (verified at read time). */
+  /** True if we have a live PID or the last health probe succeeded. */
   running: boolean;
   pid?: number;
   health?: HealthResult;
@@ -46,10 +50,53 @@ export interface ServerConfig {
   healthProbeTimeoutMs: number;
 }
 
+export type UsageKind = 'package' | 'api';
+export type UsageVendor = 'minimax';
+export type UsageRegion = 'cn' | 'global';
+export type CredentialStatus = 'valid' | 'expired' | 'error';
+
+export interface UsageWindow {
+  id: string;
+  label: string;
+  /** ISO 8601 timestamp when this window resets. */
+  resetAt: string;
+  quotaPercent: number;
+  usedPercent: number;
+}
+
+/** Persisted model account. `apiKey` never leaves the backend. */
+export interface UsageAccount {
+  id: string;
+  name: string;
+  provider: UsageVendor;
+  region?: UsageRegion;
+  kind: UsageKind;
+  color?: string;
+  apiKey?: string;
+}
+
+/** Public usage card payload. */
+export interface UsageProvider {
+  id: string;
+  name: string;
+  provider: UsageVendor;
+  region?: UsageRegion;
+  kind: UsageKind;
+  color?: string;
+  hasKey: boolean;
+  credentialStatus?: CredentialStatus;
+  lastError?: string;
+  todayTokens?: number;
+  todayCost?: number;
+  currency?: string;
+  balance?: number;
+  windows?: UsageWindow[];
+}
+
 export const DEFAULT_SERVER_CONFIG: ServerConfig = {
   bind: '127.0.0.1',
   port: 8787,
-  pollingCadenceMs: 3000,
+  pollingCadenceMs: 5 * 60 * 1000,
   chokidarDebounceMs: 250,
   healthProbeTimeoutMs: 2000,
 };
