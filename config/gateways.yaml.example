@@ -1,6 +1,7 @@
 # Sample gateways. Edit freely; the panel picks up changes within ~250ms.
 - id: g-running
   name: Sample Gateway
+  watermark: SAMPLE
   port: 9000
   startCommand: "/bin/sh -c 'exec sleep 300'"
   stopCommand: "/bin/sh -c 'kill -TERM $PID'"

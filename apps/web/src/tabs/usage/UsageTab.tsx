@@ -59,8 +59,30 @@ export function UsageTab(): JSX.Element {
           <strong>Error:</strong> {error}
         </div>
       )}
+      <div style={{ marginBottom: 16 }}>
+        <button
+          data-testid="add-account"
+          onClick={() => {
+            setEditing(null);
+            setShowAdd(true);
+          }}
+        >
+          添加模型账号
+        </button>
+      </div>
+
+      {showAdd && <UsageAccountForm onSubmit={handleAdd} onCancel={() => setShowAdd(false)} />}
+      {editing && (
+        <UsageAccountForm
+          key={editing.id}
+          initial={editing}
+          onSubmit={handleUpdate}
+          onCancel={() => setEditing(null)}
+        />
+      )}
+
       {loaded && providers.length === 0 && !error ? (
-        <p style={{ color: 'var(--muted)' }}>还没有模型账号。点左下角「模型账号」添加。</p>
+        <p style={{ color: 'var(--muted)' }}>还没有模型账号。请点击「添加模型账号」按钮添加。</p>
       ) : (
         <div className="gcp-card-grid">
           {providers.map((provider) => (
@@ -74,26 +96,6 @@ export function UsageTab(): JSX.Element {
             />
           ))}
         </div>
-      )}
-      <div className="gcp-usage-footer">
-        <button
-          data-testid="add-account"
-          onClick={() => {
-            setEditing(null);
-            setShowAdd(true);
-          }}
-        >
-          模型账号
-        </button>
-      </div>
-      {showAdd && <UsageAccountForm onSubmit={handleAdd} onCancel={() => setShowAdd(false)} />}
-      {editing && (
-        <UsageAccountForm
-          key={editing.id}
-          initial={editing}
-          onSubmit={handleUpdate}
-          onCancel={() => setEditing(null)}
-        />
       )}
     </div>
   );

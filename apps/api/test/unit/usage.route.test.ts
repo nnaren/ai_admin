@@ -40,8 +40,7 @@ describe('usage account routes', () => {
       url: '/api/usage',
       payload: {
         id: 'minimax-cn',
-        name: 'MiniMax',
-        provider: 'minimax',
+        provider: 'MiniMax',
         region: 'cn',
         kind: 'package',
         apiKey: 'sk-secret',
@@ -73,6 +72,43 @@ describe('usage account routes', () => {
     expect(card.hasKey).toBe(true);
     expect(card.apiKey).toBeUndefined();
     expect(JSON.stringify(listed.json())).not.toContain('sk-secret');
+    await app.close();
+  });
+
+  it('returns DeepSeek account balances', async () => {
+    const app = Fastify();
+    registerUsageRoutes(app, store);
+    await app.inject({
+      method: 'POST',
+      url: '/api/usage',
+      payload: {
+        id: 'deepseek',
+        provider: 'DeepSeek',
+        region: 'cn',
+        kind: 'api',
+        apiKey: 'sk-deepseek',
+      },
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          is_available: true,
+          balance_infos: [{ currency: 'CNY', total_balance: '18.50' }],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+
+    const listed = await app.inject({ method: 'GET', url: '/api/usage' });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json()[0]).toEqual(
+      expect.objectContaining({
+        provider: 'DeepSeek',
+        credentialStatus: 'valid',
+        balances: [{ currency: 'CNY', totalBalance: 18.5 }],
+      }),
+    );
+    expect(JSON.stringify(listed.json())).not.toContain('sk-deepseek');
     await app.close();
   });
 });

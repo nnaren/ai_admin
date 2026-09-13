@@ -11,6 +11,8 @@ export interface Gateway {
   id: string;
   /** Human-readable label. */
   name: string;
+  /** Large background label rendered on the card. */
+  watermark?: string;
   /** Informational; not used by the backend. */
   port?: number;
   /** Shell command string. Foreground, non-daemonizing. */
@@ -51,7 +53,7 @@ export interface ServerConfig {
 }
 
 export type UsageKind = 'package' | 'api';
-export type UsageVendor = 'minimax';
+export type UsageVendor = string;
 export type UsageRegion = 'cn' | 'global';
 export type CredentialStatus = 'valid' | 'expired' | 'error';
 
@@ -64,25 +66,34 @@ export interface UsageWindow {
   usedPercent: number;
 }
 
+export interface UsageBalance {
+  currency: string;
+  totalBalance: number;
+  grantedBalance?: number;
+  toppedUpBalance?: number;
+}
+
 /** Persisted model account. `apiKey` never leaves the backend. */
 export interface UsageAccount {
   id: string;
-  name: string;
   provider: UsageVendor;
+  watermark?: string;
   region?: UsageRegion;
   kind: UsageKind;
   color?: string;
+  usageUrl?: string;
   apiKey?: string;
 }
 
 /** Public usage card payload. */
 export interface UsageProvider {
   id: string;
-  name: string;
   provider: UsageVendor;
+  watermark?: string;
   region?: UsageRegion;
   kind: UsageKind;
   color?: string;
+  usageUrl?: string;
   hasKey: boolean;
   credentialStatus?: CredentialStatus;
   lastError?: string;
@@ -90,6 +101,7 @@ export interface UsageProvider {
   todayCost?: number;
   currency?: string;
   balance?: number;
+  balances?: UsageBalance[];
   windows?: UsageWindow[];
 }
 

@@ -23,7 +23,7 @@ pnpm install
 pnpm dev
 ```
 
-Then open `http://localhost:5173`.
+Then open `http://127.0.0.1:8081`.
 
 The backend listens on `127.0.0.1:8787`; the Vite dev server proxies `/api/*` to it.
 
@@ -36,6 +36,7 @@ A sample `config/gateways.yaml` is provided. Edit it freely — the panel picks 
 ```yaml
 - id: my-gateway                # required, unique
   name: My Gateway              # human-readable label
+  watermark: MY GATEWAY         # optional; large card background label
   port: 9000                    # optional; informational
   startCommand: "/bin/sh -c 'exec sleep 300'"   # required
   stopCommand: "/bin/sh -c 'kill -TERM $PID'"  # optional; if missing, SIGTERM by PID is the fallback

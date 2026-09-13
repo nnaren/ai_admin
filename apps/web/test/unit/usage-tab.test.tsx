@@ -17,10 +17,13 @@ describe('UsageTab', () => {
 
   it('renders provider cards from the usage API', async () => {
     vi.mocked(listUsage).mockResolvedValue([
-      { id: 'anthropic', name: 'Anthropic', kind: 'package' },
+      { id: 'anthropic', provider: 'Anthropic', kind: 'package' },
     ]);
     render(<UsageTab />);
-    expect(await screen.findByTestId('usage-anthropic')).toBeInTheDocument();
+    const card = await screen.findByTestId('usage-anthropic');
+    const addButton = screen.getByTestId('add-account');
+    expect(addButton).toHaveTextContent('添加模型账号');
+    expect(addButton.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('shows an empty hint when no providers are configured', async () => {

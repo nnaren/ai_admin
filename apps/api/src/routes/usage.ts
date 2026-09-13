@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { fetchDeepSeekBalance } from '../services/deepseekBalance.js';
 import { fetchMinimaxRemains } from '../services/minimaxRemains.js';
 import type { UsageStore } from '../services/usageStore.js';
 import type { UsageAccount, UsageProvider, UsageRegion } from '../types.js';
@@ -47,10 +48,26 @@ export function registerUsageRoutes(app: FastifyInstance, store: UsageStore): vo
 
 async function toPublic(account: UsageAccount): Promise<UsageProvider> {
   const base = publicAccount(account);
-  if (account.provider !== 'minimax' || !account.apiKey) {
+  if (!account.apiKey) {
     return {
       ...base,
-      lastError: account.apiKey ? undefined : '未配置 API key',
+      lastError: '未配置 API key',
+    };
+  }
+  if (isProvider(account.provider, 'deepseek')) {
+    const result = await fetchDeepSeekBalance(account.apiKey);
+    return {
+      ...base,
+      kind: 'api',
+      credentialStatus: result.credentialStatus,
+      lastError: result.error,
+      balances: result.balances,
+    };
+  }
+  if (!isProvider(account.provider, 'minimax')) {
+    return {
+      ...base,
+      lastError: `暂不支持提供商 ${account.provider}`,
     };
   }
   const region: UsageRegion = account.region === 'global' ? 'global' : 'cn';
@@ -66,11 +83,12 @@ async function toPublic(account: UsageAccount): Promise<UsageProvider> {
 function publicAccount(account: UsageAccount): UsageProvider {
   return {
     id: account.id,
-    name: account.name,
     provider: account.provider,
+    watermark: account.watermark,
     region: account.region,
     kind: account.kind,
     color: account.color,
+    usageUrl: account.usageUrl,
     hasKey: Boolean(account.apiKey),
   };
 }
@@ -81,9 +99,23 @@ function isValidAccount(value: unknown): value is UsageAccount {
   return (
     typeof obj.id === 'string' &&
     obj.id.length > 0 &&
-    typeof obj.name === 'string' &&
-    obj.name.length > 0 &&
-    obj.provider === 'minimax' &&
-    (obj.kind === 'package' || obj.kind === 'api')
+    typeof obj.provider === 'string' &&
+    obj.provider.trim().length > 0 &&
+    (obj.kind === 'package' || obj.kind === 'api') &&
+    (obj.usageUrl === undefined || isHttpUrl(obj.usageUrl))
   );
+}
+
+function isProvider(provider: string, expected: string): boolean {
+  return provider.trim().toLowerCase() === expected;
+}
+
+function isHttpUrl(value: unknown): boolean {
+  if (typeof value !== 'string') return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }

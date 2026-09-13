@@ -10,7 +10,12 @@ export class UsageStore {
   constructor(private readonly filePath: string) {}
 
   async load(): Promise<UsageAccount[]> {
-    this.accounts = await loadYamlArray<UsageAccount>(this.filePath);
+    const accounts = await loadYamlArray<UsageAccount & { name?: string }>(this.filePath);
+    this.accounts = accounts.map((account) => {
+      const sanitized = { ...account };
+      delete sanitized.name;
+      return sanitized;
+    });
     return this.accounts;
   }
 

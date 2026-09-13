@@ -17,13 +17,34 @@ export function GatewayCard({ status, onStart, onStop, onConfigure, busy }: Gate
   const openUrl = resolveOpenUrl(gateway);
   const now = useNow(health !== undefined);
   const color = resolveGatewayColor(gateway.color);
+  const watermark = gateway.watermark?.trim() || gateway.name;
 
   const stateBadge = running
-    ? { label: 'running', cls: 'ok' }
-    : { label: 'stopped', cls: 'warn' };
+    ? { label: '运行中', cls: 'ok' }
+    : { label: '已停止', cls: 'warn' };
+  const healthLabel = health
+    ? `${health.ok ? `正常 (${health.httpCode})` : `异常 (${health.error ?? '未知'})`} · ${formatHealthAge(health.at, now)}`
+    : running
+      ? '进程运行中'
+      : '进程未运行';
 
   return (
-    <article className={`gcp-card gcp-card-${color}`} data-testid={`card-${gateway.id}`}>
+    <article
+      className={`gcp-card gcp-card-${color}`}
+      data-testid={`card-${gateway.id}`}
+      data-watermark={watermark}
+    >
+      <svg
+        className="gcp-card-watermark"
+        viewBox="0 0 100 96"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+        data-testid={`watermark-${gateway.id}`}
+      >
+        <text x="50" y="80" textAnchor="middle" textLength="92" lengthAdjust="spacingAndGlyphs">
+          {watermark}
+        </text>
+      </svg>
       <div className="title">
         <span className="title-name">
           <span>{gateway.name}</span>
@@ -31,7 +52,7 @@ export function GatewayCard({ status, onStart, onStop, onConfigure, busy }: Gate
             <button
               type="button"
               className="gcp-gear"
-              aria-label={`Configure ${gateway.name}`}
+              aria-label={`配置 ${gateway.name}`}
               data-testid={`configure-${gateway.id}`}
               onClick={() => onConfigure(gateway)}
             >
@@ -51,24 +72,17 @@ export function GatewayCard({ status, onStart, onStop, onConfigure, busy }: Gate
               rel="noopener noreferrer"
               data-testid={`open-${gateway.id}`}
             >
-              Open
+              打开
             </a>
           )}
         </span>
       </div>
       <div className="gcp-meta">
-        <Field label="id" value={gateway.id} />
-        <Field label="pid" value={pid} />
-        <Field label="port" value={gateway.port} />
-        <Field label="url" value={gateway.healthUrl} />
-        <Field
-          label="health"
-          value={
-            health
-              ? `${health.ok ? `ok (${health.httpCode})` : `fail (${health.error ?? 'unknown'})`} · ${formatHealthAge(health.at, now)}`
-              : undefined
-          }
-        />
+        <Field label="标识" value={gateway.id} />
+        <Field label="进程号" value={pid} />
+        <Field label="端口" value={gateway.port} />
+        <Field label="地址" value={openUrl} />
+        <Field label="健康状态" value={healthLabel} />
       </div>
       <div className="actions">
         <button
@@ -77,20 +91,24 @@ export function GatewayCard({ status, onStart, onStop, onConfigure, busy }: Gate
           disabled={running || busy}
           onClick={() => onStart(gateway.id)}
         >
-          Start
+          启动
         </button>
         <button
           data-testid={`stop-${gateway.id}`}
           className="danger"
           disabled={!running || busy}
-          onClick={() => onStop(gateway.id)}
+          onClick={() => {
+            if (window.confirm(`确定要停止“${gateway.name}”吗？`)) {
+              onStop(gateway.id);
+            }
+          }}
         >
-          Stop
+          停止
         </button>
       </div>
       {lastError && (
         <div className="field">
-          <span>last error</span>
+          <span>最后错误</span>
           <span className="value">{lastError}</span>
         </div>
       )}

@@ -14,17 +14,34 @@ export function UsageCard({
   const color = resolveGatewayColor(provider.color);
   const now = useNow(true);
   const kindLabel = provider.kind === 'package' ? '套餐' : 'API';
+  const officialUsageUrl = getOfficialUsageUrl(provider.usageUrl);
+  const watermark = provider.watermark?.trim() || provider.provider;
 
   return (
-    <article className={`gcp-card gcp-card-${color}`} data-testid={`usage-${provider.id}`}>
+    <article
+      className={`gcp-card gcp-usage-card gcp-card-${color}`}
+      data-testid={`usage-${provider.id}`}
+      data-watermark={watermark}
+    >
+      <svg
+        className="gcp-card-watermark"
+        viewBox="0 0 100 96"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+        data-testid={`usage-watermark-${provider.id}`}
+      >
+        <text x="50" y="80" textAnchor="middle" textLength="92" lengthAdjust="spacingAndGlyphs">
+          {watermark}
+        </text>
+      </svg>
       <div className="title">
         <span className="title-name">
-          <span>{provider.name}</span>
+          <span>{provider.provider}</span>
           {onConfigure && (
             <button
               type="button"
               className="gcp-gear"
-              aria-label={`Configure ${provider.name}`}
+              aria-label={`配置 ${provider.provider}`}
               data-testid={`configure-usage-${provider.id}`}
               onClick={() => onConfigure(provider)}
             >
@@ -38,14 +55,24 @@ export function UsageCard({
       </div>
       {provider.lastError && (
         <div className="field">
-          <span>status</span>
+          <span>状态</span>
           <span className="value">{provider.lastError}</span>
         </div>
       )}
       {provider.kind === 'package' && (provider.windows ?? []).map((window) => (
         <QuotaWindow key={window.id} window={window} now={now} />
       ))}
-      {provider.kind === 'api' && provider.balance !== undefined && (
+      {provider.kind === 'api' && (provider.balances ?? []).map((balance) => (
+        <div
+          className="gcp-usage-today"
+          data-testid={`balance-${provider.id}-${balance.currency.toLowerCase()}`}
+          key={balance.currency}
+        >
+          <span>余额（{balance.currency}）</span>
+          <span className="value">{formatMoney(balance.totalBalance, balance.currency)}</span>
+        </div>
+      ))}
+      {provider.kind === 'api' && !(provider.balances?.length) && provider.balance !== undefined && (
         <div className="gcp-usage-today" data-testid={`balance-${provider.id}`}>
           <span>余额</span>
           <span className="value">{formatMoney(provider.balance, provider.currency)}</span>
@@ -59,8 +86,31 @@ export function UsageCard({
           </span>
         </div>
       )}
+      {officialUsageUrl && (
+        <div className="gcp-usage-link-row">
+          <a
+            className="gcp-usage-link"
+            href={officialUsageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid={`official-usage-${provider.id}`}
+          >
+            官网查看用量
+          </a>
+        </div>
+      )}
     </article>
   );
+}
+
+function getOfficialUsageUrl(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function GearIcon(): JSX.Element {

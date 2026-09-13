@@ -75,6 +75,17 @@ body {
   border-bottom: 1px solid var(--border);
   background: var(--panel);
 }
+.gcp-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.gcp-brand img {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  object-fit: cover;
+}
 .gcp-theme-toggle {
   display: flex;
   flex-shrink: 0;
@@ -97,7 +108,7 @@ body {
 }
 .gcp-header h1 {
   margin: 0;
-  font-size: 16px;
+  font-size: 32px;
   font-weight: 600;
 }
 
@@ -211,11 +222,32 @@ body {
 
 .gcp-card {
   --card-accent: #64748b;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   background: color-mix(in oklch, var(--card-accent) 18%, color-mix(in srgb, var(--panel) 62%, transparent));
   border: 1px solid color-mix(in oklch, var(--card-accent) 28%, var(--border));
   border-radius: 12px;
   padding: 16px 16px 14px 16px;
   box-shadow: inset 3px 0 0 color-mix(in oklch, var(--card-accent) 72%, transparent);
+}
+.gcp-card-watermark {
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  z-index: -1;
+  width: calc(100% - 32px);
+  height: 96px;
+  transform: translateY(-50%);
+  overflow: visible;
+  pointer-events: none;
+  user-select: none;
+}
+.gcp-card-watermark text {
+  fill: rgb(148 163 184 / 42%);
+  font-family: inherit;
+  font-size: 96px;
+  font-weight: 800;
 }
 .gcp-card-blue { --card-accent: #3b82f6; }
 .gcp-card-green { --card-accent: #22c55e; }
@@ -396,15 +428,35 @@ body {
 .gcp-usage-today .value {
   color: var(--text);
 }
+.gcp-usage-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.gcp-usage-link-row {
+  margin-top: auto;
+  padding-top: 12px;
+}
+.gcp-usage-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 12px;
+  border-radius: 4px;
+  color: #fff;
+  background: #8b5cf6;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.gcp-usage-link:hover {
+  background: color-mix(in srgb, #8b5cf6 82%, #4c1d95);
+}
 .gcp-usage-tab {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 100%;
-}
-.gcp-usage-footer {
-  margin-top: auto;
-  padding-top: 24px;
 }
 .gcp-modal-card select {
   display: block;

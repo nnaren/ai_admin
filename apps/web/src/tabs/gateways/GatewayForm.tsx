@@ -13,8 +13,9 @@ interface GatewayFormProps {
 
 export function GatewayForm({ initial, onSubmit, onCancel }: GatewayFormProps): JSX.Element {
   const editing = initial !== undefined;
-  const [id, setId] = useState(initial?.id ?? '');
+  const [id] = useState(() => initial?.id ?? createGatewayId());
   const [name, setName] = useState(initial?.name ?? '');
+  const [watermark, setWatermark] = useState(initial?.watermark ?? '');
   const [startCommand, setStartCommand] = useState(initial?.startCommand ?? '');
   const [port, setPort] = useState(initial?.port != null ? String(initial.port) : '');
   const [openUrl, setOpenUrl] = useState(initial?.openUrl ?? '');
@@ -45,11 +46,12 @@ export function GatewayForm({ initial, onSubmit, onCancel }: GatewayFormProps): 
       aria-labelledby="gcp-modal-title"
       onSubmit={(e) => {
         e.preventDefault();
-        if (!id || !name || !startCommand) return;
+        if (!name || !startCommand) return;
         void onSubmit({
           ...initial,
           id,
           name,
+          watermark: watermark.trim() || name,
           startCommand,
           port: port ? Number(port) : undefined,
           openUrl: openUrl || undefined,
@@ -58,33 +60,32 @@ export function GatewayForm({ initial, onSubmit, onCancel }: GatewayFormProps): 
       }}
     >
       <div className="gcp-modal-head">
-        <h2 id="gcp-modal-title">{editing ? 'Configure gateway' : 'Add gateway'}</h2>
-        <button type="button" className="gcp-modal-close" aria-label="Close" onClick={onCancel}>
+        <h2 id="gcp-modal-title">{editing ? '配置网关' : '添加网关'}</h2>
+        <button type="button" className="gcp-modal-close" aria-label="关闭" onClick={onCancel}>
           ×
         </button>
       </div>
       <label>
-        id{' '}
+        名称 <input data-testid="add-name" value={name} onChange={(e) => setName(e.target.value)} required />
+      </label>
+      <label>
+        水印名称{' '}
         <input
-          data-testid="add-id"
-          value={id}
-          onChange={(e) => setId(e.target.value)}
-          required
-          disabled={editing}
+          data-testid="add-watermark"
+          value={watermark}
+          onChange={(e) => setWatermark(e.target.value)}
+          placeholder={name || '例如 DSH'}
         />
       </label>
       <label>
-        name <input data-testid="add-name" value={name} onChange={(e) => setName(e.target.value)} required />
-      </label>
-      <label>
-        start command{' '}
+        启动命令{' '}
         <input data-testid="add-start" value={startCommand} onChange={(e) => setStartCommand(e.target.value)} required />
       </label>
       <label>
-        port (optional) <input data-testid="add-port" value={port} onChange={(e) => setPort(e.target.value)} />
+        端口（可选） <input data-testid="add-port" value={port} onChange={(e) => setPort(e.target.value)} />
       </label>
       <label>
-        open url (optional){' '}
+        打开地址（可选）{' '}
         <input
           data-testid="add-open"
           value={openUrl}
@@ -93,19 +94,24 @@ export function GatewayForm({ initial, onSubmit, onCancel }: GatewayFormProps): 
         />
       </label>
       <div>
-        <span>color</span>
+        <span>颜色</span>
         <ColorSwatches value={color} onChange={setColor} />
       </div>
       <div className="gcp-modal-actions">
         <button type="button" onClick={onCancel}>
-          Cancel
+          取消
         </button>
         <button type="submit" data-testid="add-submit">
-          Save
+          保存
         </button>
       </div>
     </form>
     </div>,
     document.body,
   );
+}
+
+function createGatewayId(): string {
+  const suffix = globalThis.crypto?.randomUUID?.().slice(0, 8) ?? Math.random().toString(36).slice(2, 10);
+  return `gw-${suffix}`;
 }

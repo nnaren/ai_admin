@@ -12,7 +12,7 @@ applyThemePreference(readThemePreference());
 registerTab({
   id: 'gateways',
   path: '/gateways',
-  label: 'Gateways',
+  label: '网关',
   component: GatewaysTab,
 });
 registerTab({

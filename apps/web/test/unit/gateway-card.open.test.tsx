@@ -8,6 +8,7 @@ function status(partial: Partial<GatewayStatus> & { running: boolean }): Gateway
     gateway: {
       id: 'dsh',
       name: 'dsh web',
+      watermark: 'DSH',
       startCommand: 'dsh web',
       port: 3080,
       healthUrl: 'http://127.0.0.1:3080/',
@@ -60,7 +61,7 @@ describe('GatewayCard Open button', () => {
         busy={false}
       />,
     );
-    expect(screen.getByText(/ok \(200\) · 1m ago/)).toBeInTheDocument();
+    expect(screen.getByText(/正常 \(200\) · 1分钟前/)).toBeInTheDocument();
     expect(screen.queryByText(/\d{1,2}:\d{2}:\d{2}/)).not.toBeInTheDocument();
   });
 
@@ -76,10 +77,11 @@ describe('GatewayCard Open button', () => {
         busy={false}
       />,
     );
-    expect(screen.getByText('health')).toBeInTheDocument();
-    expect(screen.getByText('port')).toBeInTheDocument();
-    expect(screen.getByText('url')).toBeInTheDocument();
-    expect(screen.queryByText(/ok \(/)).not.toBeInTheDocument();
+    expect(screen.getByText('健康状态')).toBeInTheDocument();
+    expect(screen.getByText('端口')).toBeInTheDocument();
+    expect(screen.getByText('地址')).toBeInTheDocument();
+    expect(screen.getByText('进程未运行')).toBeInTheDocument();
+    expect(screen.queryByText(/正常 \(/)).not.toBeInTheDocument();
   });
 
   it('applies the configured card color', () => {
@@ -103,6 +105,38 @@ describe('GatewayCard Open button', () => {
       />,
     );
     expect(container.querySelector('.gcp-card-blue')).toBeInTheDocument();
+  });
+
+  it('adds a DSH watermark to the dsh card', () => {
+    render(
+      <GatewayCard
+        status={status({ running: true, pid: 1 })}
+        onStart={() => {}}
+        onStop={() => {}}
+        busy={false}
+      />,
+    );
+
+    expect(screen.getByTestId('card-dsh')).toHaveAttribute('data-watermark', 'DSH');
+    const watermark = screen.getByTestId('watermark-dsh');
+    expect(watermark).toHaveAttribute('viewBox', '0 0 100 96');
+    expect(watermark.querySelector('text')).toHaveAttribute('textLength', '92');
+  });
+
+  it('uses the gateway name when no watermark is configured', () => {
+    render(
+      <GatewayCard
+        status={{
+          gateway: { id: 'bare', name: 'Bare Gateway', startCommand: 'sleep 1' },
+          running: false,
+        }}
+        onStart={() => {}}
+        onStop={() => {}}
+        busy={false}
+      />,
+    );
+
+    expect(screen.getByTestId('card-bare')).toHaveAttribute('data-watermark', 'Bare Gateway');
   });
 
   it('opens configure via the gear instead of a color circle', () => {
@@ -135,5 +169,29 @@ describe('GatewayCard Open button', () => {
       />,
     );
     expect(screen.queryByTestId('open-bare')).not.toBeInTheDocument();
+    expect(screen.getByText('进程运行中')).toBeInTheDocument();
+  });
+
+  it('asks for confirmation before stopping', () => {
+    const onStop = vi.fn();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(
+      <GatewayCard
+        status={status({ running: true, pid: 1 })}
+        onStart={() => {}}
+        onStop={onStop}
+        busy={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('stop-dsh'));
+
+    expect(confirm).toHaveBeenCalledWith('确定要停止“dsh web”吗？');
+    expect(onStop).not.toHaveBeenCalled();
+    confirm.mockReturnValue(true);
+
+    fireEvent.click(screen.getByTestId('stop-dsh'));
+
+    expect(onStop).toHaveBeenCalledWith('dsh');
   });
 });

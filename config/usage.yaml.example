@@ -1,9 +1,17 @@
 # Copy to apps/api/config/usage.yaml (API cwd is apps/api).
 # Prefer adding accounts from the Usage tab. apiKey is stored here and never sent to the browser.
 - id: minimax-cn
-  name: MiniMax
-  provider: minimax
-  region: cn # cn | global
+  provider: MiniMax
+  region: cn # cn（国内）| global（国外）
   kind: package
   color: rose
+  usageUrl: https://platform.minimax.cn/console/usage
   apiKey: sk-cp-replace-me
+
+- id: deepseek
+  provider: DeepSeek
+  region: cn
+  kind: api
+  color: blue
+  usageUrl: https://platform.deepseek.com/usage
+  apiKey: sk-replace-me

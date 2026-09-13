@@ -113,7 +113,7 @@ export function GatewaysTab(): JSX.Element {
     <div data-testid="gateways-tab">
       {error && (
         <div className="gcp-card" style={{ borderColor: 'var(--err)', marginBottom: 16 }}>
-          <strong>Error:</strong> {error}
+          <strong>错误：</strong> {error}
         </div>
       )}
 
@@ -125,7 +125,7 @@ export function GatewaysTab(): JSX.Element {
             setShowAdd(true);
           }}
         >
-          Add gateway
+          添加网关
         </button>
       </div>
 
@@ -140,7 +140,7 @@ export function GatewaysTab(): JSX.Element {
       )}
 
       {statuses.length === 0 ? (
-        <p style={{ color: 'var(--muted)' }}>No gateways configured. Add one or edit config/gateways.yaml.</p>
+        <p style={{ color: 'var(--muted)' }}>尚未配置网关。请添加网关或编辑 config/gateways.yaml。</p>
       ) : (
         <div className="gcp-card-grid">
           {statuses.map((s) => (

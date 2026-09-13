@@ -8,7 +8,7 @@ describe('UsageCard', () => {
       <UsageCard
         provider={{
           id: 'anthropic',
-          name: 'Anthropic',
+          provider: 'Anthropic',
           kind: 'package',
           color: 'amber',
           todayTokens: 0,
@@ -33,7 +33,9 @@ describe('UsageCard', () => {
       />,
     );
 
-    expect(screen.getByText('Anthropic')).toBeInTheDocument();
+    expect(screen.getByTestId('usage-anthropic').querySelector('.title-name')).toHaveTextContent('Anthropic');
+    expect(screen.getByTestId('usage-anthropic')).toHaveAttribute('data-watermark', 'Anthropic');
+    expect(screen.getByTestId('usage-watermark-anthropic').querySelector('text')).toHaveTextContent('Anthropic');
     expect(screen.getByText('套餐')).toBeInTheDocument();
     expect(screen.getByText('5h 限额')).toBeInTheDocument();
     expect(screen.getByText('周限额')).toBeInTheDocument();
@@ -47,6 +49,7 @@ describe('UsageCard', () => {
     });
     expect(screen.getByTestId('today-anthropic')).toHaveTextContent('0 tokens');
     expect(screen.getByTestId('today-anthropic')).toHaveTextContent('$0.00');
+    expect(screen.queryByText('官网查看用量')).not.toBeInTheDocument();
   });
 
   it('shows API balance instead of quota windows', () => {
@@ -54,30 +57,47 @@ describe('UsageCard', () => {
       <UsageCard
         provider={{
           id: 'deepseek',
-          name: 'DeepSeek',
+          provider: 'DeepSeek',
+          watermark: 'DEEPSEEK',
           kind: 'api',
+          usageUrl: 'https://platform.deepseek.com/usage',
           todayTokens: 23400,
           todayCost: 0.12,
-          balance: 16.8,
+          balances: [{ currency: 'CNY', totalBalance: 16.8 }],
         }}
       />,
     );
 
     expect(screen.getByText('API')).toBeInTheDocument();
-    expect(screen.getByTestId('balance-deepseek')).toHaveTextContent('$16.80');
+    expect(screen.getByTestId('usage-deepseek')).toHaveAttribute('data-watermark', 'DEEPSEEK');
+    expect(screen.getByTestId('balance-deepseek-cny')).toHaveTextContent('余额（CNY）');
+    expect(screen.getByTestId('balance-deepseek-cny')).toHaveTextContent('¥16.80');
     expect(screen.queryByText('5h 限额')).not.toBeInTheDocument();
     expect(screen.getByTestId('today-deepseek')).toHaveTextContent('23,400 tokens');
+    expect(screen.getByTestId('official-usage-deepseek')).toHaveAttribute(
+      'href',
+      'https://platform.deepseek.com/usage',
+    );
   });
 
   it('opens configure from the gear', () => {
     const onConfigure = vi.fn();
     render(
       <UsageCard
-        provider={{ id: 'minimax-cn', name: 'MiniMax', kind: 'package' }}
+        provider={{
+          id: 'minimax-cn',
+          provider: 'MiniMax',
+          kind: 'package',
+          usageUrl: 'https://platform.minimax.cn/console/usage',
+        }}
         onConfigure={onConfigure}
       />,
     );
     fireEvent.click(screen.getByTestId('configure-usage-minimax-cn'));
     expect(onConfigure).toHaveBeenCalledWith(expect.objectContaining({ id: 'minimax-cn' }));
+    expect(screen.getByTestId('official-usage-minimax-cn')).toHaveAttribute(
+      'href',
+      'https://platform.minimax.cn/console/usage',
+    );
   });
 });

@@ -8,6 +8,8 @@
 export interface Gateway {
   id: string;
   name: string;
+  /** Large background label rendered on the card. */
+  watermark?: string;
   port?: number;
   startCommand: string;
   stopCommand?: string;
@@ -34,7 +36,7 @@ export interface GatewayStatus {
 }
 
 export type UsageKind = 'package' | 'api';
-export type UsageVendor = 'minimax';
+export type UsageVendor = string;
 export type UsageRegion = 'cn' | 'global';
 export type CredentialStatus = 'valid' | 'expired' | 'error';
 
@@ -46,23 +48,32 @@ export interface UsageWindow {
   usedPercent: number;
 }
 
+export interface UsageBalance {
+  currency: string;
+  totalBalance: number;
+  grantedBalance?: number;
+  toppedUpBalance?: number;
+}
+
 export interface UsageAccount {
   id: string;
-  name: string;
   provider: UsageVendor;
+  watermark?: string;
   region?: UsageRegion;
   kind: UsageKind;
   color?: string;
+  usageUrl?: string;
   apiKey?: string;
 }
 
 export interface UsageProvider {
   id: string;
-  name: string;
-  provider?: UsageVendor;
+  provider: UsageVendor;
+  watermark?: string;
   region?: UsageRegion;
   kind: UsageKind;
   color?: string;
+  usageUrl?: string;
   hasKey?: boolean;
   credentialStatus?: CredentialStatus;
   lastError?: string;
@@ -70,5 +81,6 @@ export interface UsageProvider {
   todayCost?: number;
   currency?: string;
   balance?: number;
+  balances?: UsageBalance[];
   windows?: UsageWindow[];
 }
