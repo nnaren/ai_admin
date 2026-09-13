@@ -78,7 +78,7 @@ export function registerGatewayRoutes(
     if (!gateway) return reply.code(404).send({ error: `gateway ${id} not found` });
     try {
       const { pid } = await supervisor.start(gateway);
-      probe.probe(gateway);
+      await probe.checkNow(gateway);
       return reply.send({ running: true, pid });
     } catch (err) {
       const e = err as Error & { code?: string; pid?: number };
@@ -96,6 +96,7 @@ export function registerGatewayRoutes(
     try {
       await supervisor.stop(gateway);
       probe.invalidate(id);
+      await probe.checkNow(gateway);
       return reply.send({ running: false });
     } catch (err) {
       return reply.code(500).send({ error: (err as Error).message });

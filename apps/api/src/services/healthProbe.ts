@@ -21,13 +21,17 @@ export class HealthProbe {
   probe(gateway: Gateway): void {
     if (!gateway.healthUrl) return;
     if (this.timers.has(gateway.id)) return;
-    const tick = async () => {
-      const result = await this.fetchOnce(gateway.healthUrl!);
-      this.cache.set(gateway.id, result);
-    };
-    void tick();
-    const timer = setInterval(() => void tick(), this.intervalMs);
+    void this.checkNow(gateway);
+    const timer = setInterval(() => void this.checkNow(gateway), this.intervalMs);
     this.timers.set(gateway.id, timer);
+  }
+
+  /** Probe immediately and update the cached status. */
+  async checkNow(gateway: Gateway): Promise<HealthResult | undefined> {
+    if (!gateway.healthUrl) return undefined;
+    const result = await this.fetchOnce(gateway.healthUrl);
+    this.cache.set(gateway.id, result);
+    return result;
   }
 
   /** Stop probing a gateway id (and clear its cache entry). */

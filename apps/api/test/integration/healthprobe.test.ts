@@ -26,6 +26,23 @@ function startFakeServer(status: number): Promise<number> {
 }
 
 describe('HealthProbe', () => {
+  it('refreshes the cached result immediately on demand', async () => {
+    const port = await startFakeServer(200);
+    const probe = new HealthProbe(60_000, 2000);
+    const gateway = {
+      id: 'refresh',
+      name: 'refresh',
+      startCommand: 'x',
+      healthUrl: `http://127.0.0.1:${port}/`,
+    };
+
+    const result = await probe.checkNow(gateway);
+
+    expect(result?.ok).toBe(true);
+    expect(probe.get(gateway.id)).toEqual(result);
+    probe.shutdown();
+  });
+
   it('G1: returns ok=true with HTTP code when endpoint reachable', async () => {
     const port = await startFakeServer(200);
     const probe = new HealthProbe(1000, 2000);
