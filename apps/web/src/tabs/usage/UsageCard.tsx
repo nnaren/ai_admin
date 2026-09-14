@@ -69,20 +69,27 @@ export function UsageCard({
           key={balance.currency}
         >
           <span>余额（{balance.currency}）</span>
-          <span className="value">{formatMoney(balance.totalBalance, balance.currency)}</span>
+          <span className="value gcp-usage-money">
+            {formatMoney(balance.totalBalance, balance.currency)}
+          </span>
         </div>
       ))}
       {provider.kind === 'api' && !(provider.balances?.length) && provider.balance !== undefined && (
         <div className="gcp-usage-today" data-testid={`balance-${provider.id}`}>
           <span>余额</span>
-          <span className="value">{formatMoney(provider.balance, provider.currency)}</span>
+          <span className="value gcp-usage-money">
+            {formatMoney(provider.balance, provider.currency)}
+          </span>
         </div>
       )}
       {(provider.todayTokens !== undefined || provider.todayCost !== undefined) && (
         <div className="gcp-usage-today" data-testid={`today-${provider.id}`}>
           <span>今日</span>
           <span className="value">
-            {formatTokens(provider.todayTokens)} · {formatMoney(provider.todayCost, provider.currency)}
+            {formatTokens(provider.todayTokens)} ·{' '}
+            <span className="gcp-usage-money">
+              {formatMoney(provider.todayCost, provider.currency)}
+            </span>
           </span>
         </div>
       )}
@@ -127,6 +134,11 @@ function GearIcon(): JSX.Element {
 function QuotaWindow({ window, now }: { window: UsageWindow; now: number }): JSX.Element {
   const used = usedBarPercent(window.usedPercent);
   const tone = used >= 90 ? 'low' : used >= 75 ? 'mid' : 'ok';
+  const resetText = formatResetIn(window.resetAt, now);
+  const resetSuffix = '后重置';
+  const resetTime = resetText.endsWith(resetSuffix)
+    ? resetText.slice(0, -resetSuffix.length)
+    : undefined;
 
   return (
     <div className="gcp-quota" data-testid={`quota-${window.id}`}>
@@ -135,8 +147,19 @@ function QuotaWindow({ window, now }: { window: UsageWindow; now: number }): JSX
         <span>额度 {window.quotaPercent}%</span>
       </div>
       <div className="gcp-quota-row gcp-quota-meta">
-        <span>{formatResetIn(window.resetAt, now)}</span>
-        <span>已用 {window.usedPercent}%</span>
+        <span>
+          {resetTime ? (
+            <>
+              <span className="gcp-quota-reset-time">{resetTime}</span>
+              {resetSuffix}
+            </>
+          ) : (
+            resetText
+          )}
+        </span>
+        <span>
+          已用 <span className="gcp-quota-used">{window.usedPercent}%</span>
+        </span>
       </div>
       <div className="gcp-quota-bar" aria-hidden="true">
         <i className={`gcp-quota-fill gcp-quota-fill-${tone}`} style={{ width: `${used}%` }} />

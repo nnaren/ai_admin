@@ -402,6 +402,13 @@ body {
   color: var(--muted);
   margin-top: 2px;
 }
+.gcp-quota-reset-time {
+  color: var(--go);
+}
+.gcp-quota-used,
+.gcp-usage-money {
+  color: var(--go);
+}
 .gcp-quota-bar {
   height: 6px;
   border-radius: 999px;
@@ -427,6 +434,9 @@ body {
 }
 .gcp-usage-today .value {
   color: var(--text);
+}
+.gcp-usage-today .gcp-usage-money {
+  color: var(--go);
 }
 .gcp-usage-card {
   display: flex;

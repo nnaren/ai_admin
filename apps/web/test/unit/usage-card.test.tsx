@@ -39,8 +39,11 @@ describe('UsageCard', () => {
     expect(screen.getByText('套餐')).toBeInTheDocument();
     expect(screen.getByText('5h 限额')).toBeInTheDocument();
     expect(screen.getByText('周限额')).toBeInTheDocument();
+    expect(document.querySelector('.gcp-quota-reset-time')).toBeInTheDocument();
+    expect(document.querySelector('.gcp-quota-reset-time')).not.toHaveTextContent('后重置');
     expect(screen.getByText('额度 150%')).toBeInTheDocument();
-    expect(screen.getByText('已用 51%')).toBeInTheDocument();
+    expect(screen.getByTestId('quota-week')).toHaveTextContent('已用 51%');
+    expect(screen.getByTestId('quota-week').querySelector('.gcp-quota-used')).toHaveTextContent('51%');
     expect(screen.getByTestId('quota-fiveHour').querySelector('.gcp-quota-fill')).toHaveStyle({
       width: '0%',
     });
@@ -72,8 +75,12 @@ describe('UsageCard', () => {
     expect(screen.getByTestId('usage-deepseek')).toHaveAttribute('data-watermark', 'DEEPSEEK');
     expect(screen.getByTestId('balance-deepseek-cny')).toHaveTextContent('余额（CNY）');
     expect(screen.getByTestId('balance-deepseek-cny')).toHaveTextContent('¥16.80');
+    expect(screen.getByTestId('balance-deepseek-cny').querySelector('.gcp-usage-money')).toHaveTextContent(
+      '¥16.80',
+    );
     expect(screen.queryByText('5h 限额')).not.toBeInTheDocument();
     expect(screen.getByTestId('today-deepseek')).toHaveTextContent('23,400 tokens');
+    expect(screen.getByTestId('today-deepseek').querySelector('.gcp-usage-money')).toHaveTextContent('$0.12');
     expect(screen.getByTestId('official-usage-deepseek')).toHaveAttribute(
       'href',
       'https://platform.deepseek.com/usage',
