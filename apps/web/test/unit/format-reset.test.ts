@@ -7,6 +7,11 @@ describe('formatResetIn', () => {
     expect(formatResetIn('2026-09-13T04:51:00+08:00', now)).toBe('4小时 2分钟后重置');
   });
 
+  it('formats days and hours when at least one day remains', () => {
+    const now = Date.parse('2026-09-13T00:00:00Z');
+    expect(formatResetIn('2026-09-15T03:59:00Z', now)).toBe('2天 3小时后重置');
+  });
+
   it('says the window is about to reset when past', () => {
     expect(formatResetIn('2020-01-01T00:00:00Z', Date.parse('2026-09-13T00:00:00Z'))).toBe('即将重置');
   });
