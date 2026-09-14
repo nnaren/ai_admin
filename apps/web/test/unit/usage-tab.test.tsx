@@ -36,4 +36,20 @@ describe('UsageTab', () => {
     fireEvent.click(screen.getByTestId('add-account'));
     expect(screen.getByTestId('add-account-form')).toBeInTheDocument();
   });
+
+  it('refreshes providers when the refresh button is clicked', async () => {
+    vi.mocked(listUsage)
+      .mockResolvedValueOnce([{ id: 'anthropic', provider: 'Anthropic', kind: 'package' }])
+      .mockResolvedValueOnce([
+        { id: 'anthropic', provider: 'Anthropic', kind: 'package' },
+        { id: 'deepseek', provider: 'DeepSeek', kind: 'api' },
+      ]);
+    render(<UsageTab />);
+    await screen.findByTestId('usage-anthropic');
+    expect(listUsage).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('refresh-usage'));
+    await screen.findByTestId('usage-deepseek');
+    expect(listUsage).toHaveBeenCalledTimes(2);
+  });
 });

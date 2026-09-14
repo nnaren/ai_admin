@@ -458,6 +458,44 @@ body {
   flex-direction: column;
   min-height: 100%;
 }
+.gcp-usage-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.gcp-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+}
+.gcp-icon-btn:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--hover);
+}
+.gcp-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.gcp-icon-btn.is-refreshing svg {
+  animation: gcp-spin 0.8s linear infinite;
+}
+@keyframes gcp-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gcp-icon-btn.is-refreshing svg {
+    animation: none;
+  }
+}
 .gcp-modal-card select {
   display: block;
   width: 100%;

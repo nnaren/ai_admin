@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { addUsageAccount, listUsage, updateUsageAccount } from '../../api/client.js';
 import type { UsageAccount, UsageProvider } from '../../types.js';
 import { UsageAccountForm } from './UsageAccountForm.js';
@@ -8,17 +8,27 @@ export function UsageTab(): JSX.Element {
   const [providers, setProviders] = useState<UsageProvider[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<UsageProvider | null>(null);
+  const refreshSeq = useRef(0);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (opts?: { showBusy?: boolean }) => {
+    const seq = ++refreshSeq.current;
+    if (opts?.showBusy) setRefreshing(true);
     try {
-      setProviders(await listUsage());
+      const next = await listUsage();
+      if (seq !== refreshSeq.current) return;
+      setProviders(next);
       setError(null);
     } catch (err) {
+      if (seq !== refreshSeq.current) return;
       setError((err as Error).message);
     } finally {
-      setLoaded(true);
+      if (seq === refreshSeq.current) {
+        setLoaded(true);
+        setRefreshing(false);
+      }
     }
   }, []);
 
@@ -59,7 +69,7 @@ export function UsageTab(): JSX.Element {
           <strong>Error:</strong> {error}
         </div>
       )}
-      <div style={{ marginBottom: 16 }}>
+      <div className="gcp-usage-toolbar">
         <button
           data-testid="add-account"
           onClick={() => {
@@ -68,6 +78,18 @@ export function UsageTab(): JSX.Element {
           }}
         >
           添加模型账号
+        </button>
+        <button
+          type="button"
+          className={`gcp-icon-btn${refreshing ? ' is-refreshing' : ''}`}
+          data-testid="refresh-usage"
+          aria-label="刷新"
+          title="刷新"
+          aria-busy={refreshing}
+          disabled={refreshing}
+          onClick={() => void refresh({ showBusy: true })}
+        >
+          <RefreshIcon />
         </button>
       </div>
 
@@ -98,5 +120,20 @@ export function UsageTab(): JSX.Element {
         </div>
       )}
     </div>
+  );
+}
+
+function RefreshIcon(): JSX.Element {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"
+      />
+      <path
+        fill="currentColor"
+        d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"
+      />
+    </svg>
   );
 }
