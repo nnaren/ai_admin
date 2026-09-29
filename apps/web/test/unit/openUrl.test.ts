@@ -2,6 +2,19 @@ import { describe, it, expect } from 'vitest';
 import { resolveOpenUrl } from '../../src/tabs/gateways/openUrl.js';
 
 describe('resolveOpenUrl', () => {
+  it('prefers launchOpenUrl over configured openUrl', () => {
+    expect(
+      resolveOpenUrl(
+        {
+          openUrl: 'http://127.0.0.1:3080/',
+          healthUrl: 'http://127.0.0.1:3080/health',
+          port: 9,
+        },
+        'http://127.0.0.1:3080/?token=abc',
+      ),
+    ).toBe('http://127.0.0.1:3080/?token=abc');
+  });
+
   it('prefers explicit openUrl', () => {
     expect(
       resolveOpenUrl({

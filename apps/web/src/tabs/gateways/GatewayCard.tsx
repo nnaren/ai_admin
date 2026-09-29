@@ -13,8 +13,11 @@ interface GatewayCardProps {
 }
 
 export function GatewayCard({ status, onStart, onStop, onConfigure, busy }: GatewayCardProps): JSX.Element {
-  const { gateway, running, pid, health, lastError } = status;
-  const openUrl = resolveOpenUrl(gateway);
+  const { gateway, running, pid, health, lastError, launchOpenUrl } = status;
+  const displayUrl = resolveOpenUrl(gateway, launchOpenUrl);
+  // Always open via backend redirect so the click uses the latest auth token.
+  const openHref =
+    running || health?.ok ? `/api/gateways/${encodeURIComponent(gateway.id)}/open` : undefined;
   const now = useNow(health !== undefined);
   const color = resolveGatewayColor(gateway.color);
   const watermark = gateway.watermark?.trim() || gateway.name;
@@ -64,13 +67,18 @@ export function GatewayCard({ status, onStart, onStop, onConfigure, busy }: Gate
           <span className={`badge ${stateBadge.cls}`} data-testid={`state-${gateway.id}`}>
             {stateBadge.label}
           </span>
-          {(running || health?.ok) && openUrl && (
+          {openHref && (
             <a
               className="open-link"
-              href={openUrl}
+              href={openHref}
               target="_blank"
               rel="noopener noreferrer"
               data-testid={`open-${gateway.id}`}
+              title={
+                launchOpenUrl
+                  ? '打开网关页面'
+                  : '启动后需等待认证链接；若失败请停止后再启动'
+              }
             >
               打开
             </a>
@@ -81,7 +89,7 @@ export function GatewayCard({ status, onStart, onStop, onConfigure, busy }: Gate
         <Field label="标识" value={gateway.id} />
         <Field label="进程号" value={pid} />
         <Field label="端口" value={gateway.port} />
-        <Field label="地址" value={openUrl} />
+        <Field label="地址" value={displayOpenUrl(displayUrl)} />
         <Field label="健康状态" value={healthLabel} />
       </div>
       <div className="actions">
@@ -123,6 +131,18 @@ function Field({ label, value }: { label: string; value?: string | number }): JS
       <span className="value">{value ?? ''}</span>
     </div>
   );
+}
+
+function displayOpenUrl(url: string | undefined): string | undefined {
+  if (!url) return url;
+  try {
+    const parsed = new URL(url);
+    if (!parsed.searchParams.has('token')) return url;
+    parsed.searchParams.set('token', '***');
+    return parsed.toString();
+  } catch {
+    return url.replace(/([?&]token=)[^&]+/giu, '$1***');
+  }
 }
 
 function GearIcon(): JSX.Element {

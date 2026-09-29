@@ -1,6 +1,8 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import treeKill from 'tree-kill';
 import type { Gateway } from '../types.js';
+import { extractLaunchOpenUrl } from './launchOpenUrl.js';
+import { LaunchOpenUrlStore } from './launchOpenUrlStore.js';
 import { findListenerPid, listenPort } from './listenPort.js';
 
 /**
@@ -23,12 +25,14 @@ type SupervisorState = {
   startedAt: string;
   /** True when we attached to a process we did not spawn (R10). */
   adopted?: boolean;
+  /** One-shot browser URL scraped from process output (e.g. dsh `?token=`). */
+  launchOpenUrl?: string;
 };
-
 export class Supervisor {
   private readonly running = new Map<string, SupervisorState>();
   private readonly locks = new Map<string, Promise<void>>();
   private readonly lastErrors = new Map<string, string>();
+  private readonly launchUrls = new LaunchOpenUrlStore();
 
   /**
    * Start a gateway. Returns the captured PID or throws.
@@ -62,9 +66,19 @@ export class Supervisor {
       });
 
       let output = '';
+      const state: SupervisorState = {
+        child,
+        pid: child.pid,
+        startedAt: new Date().toISOString(),
+      };
       const append = (buf: Buffer | string): void => {
         output += buf.toString();
-        if (output.length > 2000) output = output.slice(-2000);
+        if (output.length > 8000) output = output.slice(-8000);
+        const launchOpenUrl = extractLaunchOpenUrl(output);
+        if (launchOpenUrl && launchOpenUrl !== state.launchOpenUrl) {
+          state.launchOpenUrl = launchOpenUrl;
+          void this.launchUrls.set(gateway.id, child.pid!, launchOpenUrl);
+        }
       };
       child.stdout?.on('data', append);
       child.stderr?.on('data', append);
@@ -90,15 +104,12 @@ export class Supervisor {
             // Promote: install the permanent running-state entry and
             // the permanent exit listener (which removes from the map).
             this.lastErrors.delete(gateway.id);
-            this.running.set(gateway.id, {
-              child,
-              pid: child.pid,
-              startedAt: new Date().toISOString(),
-            });
+            this.running.set(gateway.id, state);
             child.on('exit', () => {
               const cur = this.running.get(gateway.id);
               if (cur && cur.pid === child.pid) {
                 this.running.delete(gateway.id);
+                void this.launchUrls.clear(gateway.id);
               }
             });
             return { pid: child.pid };
@@ -123,6 +134,31 @@ export class Supervisor {
     return this.lastErrors.get(id);
   }
 
+  /** Browser launch URL scraped from a spawned process's stdout/stderr, if any. */
+  getLaunchOpenUrl(id: string): string | undefined {
+    const state = this.running.get(id);
+    if (state?.launchOpenUrl) return state.launchOpenUrl;
+    return undefined;
+  }
+
+  /** Async lookup including persisted URLs for the live PID (survives API restart). */
+  async resolveLaunchOpenUrl(id: string): Promise<string | undefined> {
+    const state = this.running.get(id);
+    if (state?.launchOpenUrl) return state.launchOpenUrl;
+    const pid = state?.pid ?? this.getLivePid(id);
+    const persisted = await this.launchUrls.get(id, pid);
+    if (persisted && state && !state.launchOpenUrl) {
+      state.launchOpenUrl = persisted;
+    }
+    return persisted;
+  }
+
+  /** True when we still hold a child we spawned (not an adopted external PID). */
+  isSpawned(id: string): boolean {
+    const state = this.running.get(id);
+    return Boolean(state?.child) && !state?.adopted;
+  }
+
   /**
    * Stop a gateway. Tries stopCommand first, then SIGTERM, then tree-kill.
    * No-op if not running.
@@ -136,6 +172,7 @@ export class Supervisor {
       const { pid } = state;
       if (!this.isAlive(pid)) {
         this.running.delete(gateway.id);
+        void this.launchUrls.clear(gateway.id);
         return;
       }
 
@@ -156,6 +193,7 @@ export class Supervisor {
 
       if (!this.isAlive(pid)) {
         this.running.delete(gateway.id);
+        void this.launchUrls.clear(gateway.id);
         return;
       }
 
@@ -171,6 +209,7 @@ export class Supervisor {
       }
       if (!this.isAlive(pid)) {
         this.running.delete(gateway.id);
+        void this.launchUrls.clear(gateway.id);
         return;
       }
 
@@ -179,6 +218,7 @@ export class Supervisor {
         treeKill(pid, 'SIGKILL', () => resolve());
       });
       this.running.delete(gateway.id);
+      void this.launchUrls.clear(gateway.id);
     } finally {
       this.unlock(gateway.id);
     }
@@ -226,10 +266,12 @@ export class Supervisor {
     const pid = await findListenerPid(port);
     if (pid === undefined || !this.isAlive(pid)) return undefined;
     this.lastErrors.delete(gateway.id);
+    const launchOpenUrl = await this.launchUrls.get(gateway.id, pid);
     this.running.set(gateway.id, {
       pid,
       startedAt: new Date().toISOString(),
       adopted: true,
+      ...(launchOpenUrl ? { launchOpenUrl } : {}),
     });
     return pid;
   }
@@ -273,7 +315,7 @@ export class Supervisor {
   }
 
   private failStart(id: string, code: string, pid?: number, output?: string): StartError {
-    const err = new StartError(code, pid, output?.trim());
+    const err = new StartError(code, pid, redactLaunchTokens(output?.trim()));
     this.lastErrors.set(id, err.message);
     return err;
   }
@@ -293,6 +335,11 @@ export class StartError extends Error {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+function redactLaunchTokens(text: string | undefined): string | undefined {
+  if (!text) return text;
+  return text.replace(/([?&]token=)[^\s"'<>&]+/giu, '$1***');
 }
 
 function runShellCommand(cmd: string, timeoutMs: number): Promise<void> {

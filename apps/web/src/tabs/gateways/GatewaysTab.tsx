@@ -42,6 +42,17 @@ export function GatewaysTab(): JSX.Element {
       try {
         await startGateway(id);
         await refresh();
+        // dsh web prints its auth URL a moment after bind; keep refreshing briefly.
+        void (async () => {
+          for (let i = 0; i < 20; i++) {
+            await new Promise((r) => setTimeout(r, 250));
+            const next = await listGateways().catch(() => null);
+            if (!next) continue;
+            setStatuses(next);
+            const row = next.find((s) => s.gateway.id === id);
+            if (!row?.running || row.launchOpenUrl) return;
+          }
+        })();
       } catch (err) {
         setError((err as Error).message);
       } finally {

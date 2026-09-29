@@ -42,6 +42,8 @@ export interface GatewayStatus {
   pid?: number;
   health?: HealthResult;
   lastError?: string;
+  /** One-shot browser URL from process output (e.g. dsh web `?token=`). */
+  launchOpenUrl?: string;
 }
 
 export interface ServerConfig {

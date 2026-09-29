@@ -2,11 +2,13 @@ import type { Gateway } from '../../types.js';
 
 /**
  * Resolve the page to open for a gateway.
- * Preference: explicit openUrl → healthUrl origin → localhost:port.
+ * Preference: launchOpenUrl (process token) → explicit openUrl → healthUrl origin → localhost:port.
  */
 export function resolveOpenUrl(
   gateway: Pick<Gateway, 'openUrl' | 'healthUrl' | 'port'>,
+  launchOpenUrl?: string,
 ): string | undefined {
+  if (launchOpenUrl) return launchOpenUrl;
   if (gateway.openUrl) return gateway.openUrl;
   if (gateway.healthUrl) {
     try {
