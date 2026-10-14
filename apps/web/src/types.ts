@@ -102,3 +102,102 @@ export interface UsageProvider {
   windows?: UsageWindow[];
   spend?: UsageSpendMap;
 }
+
+/* ------------------------------------------------------------------ *
+ * Plugins tab (mirror of apps/api/src/types.ts plugin section)
+ * ------------------------------------------------------------------ */
+
+export type PluginToolId = 'claudecode' | 'codex' | 'deepseek';
+export type PluginScope = 'user' | 'project';
+
+/** One installed plugin. `id` is `<name>@<marketplace>`. */
+export interface PluginEntry {
+  id: string;
+  name: string;
+  marketplace: string;
+  version?: string;
+  description?: string;
+  enabled: boolean;
+  installedAt?: string;
+  updatedAt?: string;
+  path?: string;
+  source?: string;
+}
+
+export interface MarketplaceEntry {
+  id: string;
+  name: string;
+  description?: string;
+  source?: string;
+  installLocation?: string;
+  updatedAt?: string;
+}
+
+export interface CatalogPlugin {
+  id: string;
+  name: string;
+  marketplace: string;
+  description?: string;
+  version?: string;
+  author?: string;
+  category?: string;
+  homepage?: string;
+  tags?: string[];
+  sourcePath?: string;
+  source?: string;
+}
+
+/** Everything one tool exposes under one scope root. */
+export interface PluginScopeView {
+  scope: PluginScope;
+  root: string;
+  present: boolean;
+  plugins: PluginEntry[];
+  marketplaces: MarketplaceEntry[];
+  catalog: CatalogPlugin[];
+  canInstall: boolean;
+  note?: string;
+  lastError?: string;
+}
+
+export interface PluginToolView {
+  id: PluginToolId;
+  label: string;
+  color: string;
+  userScope: PluginScopeView;
+}
+
+export interface PluginProject {
+  id: string;
+  name: string;
+  path: string;
+  addedAt?: string;
+}
+
+export interface PluginProjectView extends PluginProject {
+  scopes: Partial<Record<PluginToolId, PluginScopeView>>;
+}
+
+/** One directory offered by the project path picker. */
+export interface BrowseDir {
+  name: string;
+  path: string;
+}
+
+/** Result of `GET /api/plugins/browse` — a directory and its subdirectories. */
+export interface BrowseResult {
+  path: string;
+  parent: string | null;
+  /** True when this is the user's home directory. */
+  home: boolean;
+  dirs: BrowseDir[];
+  error?: string;
+  truncated?: boolean;
+}
+
+export interface PluginOverview {
+  refreshedAt: string;
+  home: string;
+  tools: PluginToolView[];
+  projects: PluginProjectView[];
+}

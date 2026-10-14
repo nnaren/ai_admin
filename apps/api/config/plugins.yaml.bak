@@ -1,0 +1,13 @@
+projects:
+  - id: ecc
+    name: ECC
+    path: /Users/yuanye/CODE/Harness/ECC
+    addedAt: 2026-10-14T16:11:27.232Z
+  - id: agenthome
+    name: agenthome
+    path: /Users/yuanye/CODE/AgentHome/agenthome
+    addedAt: 2026-10-14T16:11:45.818Z
+  - id: codex
+    name: codex
+    path: /Users/yuanye/CODE/AgentHome/codex
+    addedAt: 2026-10-14T16:11:54.475Z

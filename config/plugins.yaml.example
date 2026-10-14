@@ -1,0 +1,13 @@
+# Copy to apps/api/config/plugins.yaml (API cwd is apps/api).
+#
+# The plugins tab scans Claude Code / Codex / DeepSeek Harness in their real
+# directories. This file only records *projects* — the per-project views. User
+# level is resident: it is scanned from your home directory on every load and
+# needs nothing here.
+#
+# Add and remove projects from the 「项目级」 tab; this file is written for you.
+projects:
+  - id: my-app
+    name: my-app
+    path: /Users/you/code/my-app
+    addedAt: 2026-10-14T12:00:00.000Z

@@ -3,7 +3,7 @@
 A **local development dashboard** for self-managed AI gateway processes.
 
 - Single-operator (you), localhost-first (`127.0.0.1:8787` by default), YAML-authoritative.
-- One tab today (`gateways`); a generic tab host lets additional tabs be added without touching the host.
+- Three tabs: `gateways`（网关）, `usage`（用量）, `plugins`（插件）; a generic tab host lets additional tabs be added without touching the host.
 - No auth, no cloud, no Docker. Just Node + pnpm + Vite + Fastify.
 
 ---
@@ -88,6 +88,58 @@ Accounts live in `apps/api/config/usage.yaml` (template: `config/usage.yaml.exam
 The Usage tab auto-refreshes every 5 minutes on the absolute grid (…:00:10) using the refresh button's code path, and shows the age of the last refresh next to the button.
 
 Pass `snapshot: false` to `boot()` in tests — the scheduler would otherwise call real provider APIs with the real `config/usage.yaml`.
+
+---
+
+## Plugins tab (`/plugins`)
+
+One card per tool — **Claude Code**, **Codex**, **DeepSeek Harness** — laid out as columns:
+
+| Column | Contents |
+|---|---|
+| 1 | the tools; picking one re-scopes every column to it |
+| 2 | **用户级 · 常驻** — the resident user scope, scanned from your home directory on every load |
+| 3, 4, … | one column per registered project, same tool |
+
+Everything is on screen at once, so a project's plugins can be read against the user scope without switching views.
+
+A column is **not** a box. Each column is one summary card (总揽框 — scope, project name, tool, root path, `已激活/总数`, and the `安装 · N` button) with standalone plugin cards stacked below it, each carrying its own activate switch and uninstall button. Columns share the strip's height, so every summary sits on the same line and the plugin cards line up across columns. A column's `安装 · N` opens a dialog — pick a marketplace, then pick a plugin from it — so a 287-entry catalog never sits in the layout.
+
+The strip's **horizontal scrollbar is pinned to the bottom of the window**, not to the bottom of the tallest column: the strip is sized to the space under the header/tabs/toolbar, so its bottom edge *is* the viewport bottom. The page itself never scrolls.
+
+**Adding a project** appends a column at the right. The form takes a typed path *or* 「浏览…」, an in-panel folder browser over `GET /api/plugins/browse` that lists real subdirectories of this machine (dotfiles, `node_modules` and files are hidden; an unreadable directory says so instead of showing an empty list). Whichever way the path is chosen, the server verifies the directory exists before registering it. The `×` in a project column header forgets that project. **Removing a project touches no file.**
+
+`GET /api/plugins/browse?path=` returns `{ path, parent, home, dirs, error?, truncated? }` — names and paths of **directories only**, never file contents.
+
+Plugin identity is `<name>@<marketplace>`, the key all three tools use natively. Project scope is per-scope state: installing a plugin for a project does not change the user-scope activation.
+### Where the state actually lives
+
+The panel does **not** keep its own plugin inventory. It reads each tool's own files and writes back the same ones:
+
+| Tool | Registry (read) | Enablement (read/write) |
+|---|---|---|
+| Claude Code | `~/.claude/plugins/installed_plugins.json` — one record per `name@market`, each tagged `scope: user\|project` | `~/.claude/settings.json` → `enabledPlugins` (per scope) |
+| Codex | `~/.codex/config.toml` → `[plugins."name@market"]` | same section, `enabled = true\|false` |
+| DeepSeek | `~/.dsh/profiles/<profile>/cordis.yml` + `cordis.patch.yml` | `cordis.patch.yml` entry list |
+
+Claude Code and Codex keep these registries **globally** in your home, so a project view lists both its own installs and any globally installed plugin the project activates.
+
+Marketplaces: Claude Code's `known_marketplaces.json` plus each checkout's `.claude-plugin/marketplace.json`; Codex's `plugins/cache/<marketplace>/` directories. An offer with a **local** source can be installed from the panel; a remote-only offer (e.g. `{source: github, repo: …}`) is listed but marked as needing the tool's own installer — the panel will not half-install it.
+
+### Write safety
+
+- Every file the panel rewrites is backed up to `<file>.bak` first and replaced atomically (temp file + rename).
+- `config.toml` is edited **section by section**; the rest of your Codex config is preserved byte-for-byte. A full TOML round-trip would silently rewrite your file.
+- A config that cannot be parsed is reported as an error on that card — never treated as "no plugins", which would invite writing a blank slate over your settings.
+- Installing copies from a marketplace path that escapes its checkout (`../../etc`) is refused.
+
+### What the panel deliberately does not do
+
+- **DeepSeek installs.** A bundle is an npm package in a dsh profile; installing means running a package manager. `canInstall` is false for that tool and the UI says so rather than pretending.
+- **Marketplace add/remove.** The panel consumes the marketplaces the tools already know about.
+- Anything outside the three adapters above. Unknown ids return 404; a refused write returns 409 with the reason, shown verbatim in the tab.
+
+`apps/api/config/plugins.yaml` (template: `config/plugins.yaml.example`) holds **only** the project list. It is written by the tab, and is the only plugin-related state the panel owns.
 
 ---
 

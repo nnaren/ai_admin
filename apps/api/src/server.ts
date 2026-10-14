@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import os from 'node:os';
 import path from 'node:path';
 import { loadServerConfig } from './config.js';
 import { YamlStore } from './services/yamlStore.js';
@@ -6,9 +7,12 @@ import { Supervisor } from './services/supervisor.js';
 import { HealthProbe } from './services/healthProbe.js';
 import { registerGatewayRoutes } from './routes/gateways.js';
 import { registerUsageRoutes } from './routes/usage.js';
+import { registerPluginRoutes } from './routes/plugins.js';
 import { UsageStore } from './services/usageStore.js';
 import { UsageHistoryStore } from './services/usageHistory.js';
 import { captureDailyOpening, DailyCaptureScheduler } from './services/dailyBalanceCapture.js';
+import { PluginStore } from './services/pluginStore.js';
+import { PluginScanner } from './services/pluginScanner.js';
 import type { ServerConfig } from './types.js';
 
 export interface BootOptions {
@@ -17,6 +21,10 @@ export interface BootOptions {
   usagePath?: string;
   /** Directory holding the append-only `usage-history-<id>.log` ledgers. */
   usageHistoryDir?: string;
+  /** Project registry for the plugins tab. Defaults to `config/plugins.yaml`. */
+  pluginsPath?: string;
+  /** Home directory the plugins tab scans for user-level plugins. */
+  homeDir?: string;
   /** Set false in tests: the snapshot scheduler would otherwise call real provider APIs. */
   snapshot?: boolean;
   configOverride?: Partial<ServerConfig>;
@@ -57,6 +65,14 @@ export async function boot(opts: BootOptions = {}): Promise<FastifyInstance> {
   const usageStore = new UsageStore(usagePath);
   await usageStore.load();
 
+  // Plugins tab: the project registry is panel-owned YAML; everything else is
+  // scanned from each tool's own directories on every request.
+  const homeDir = opts.homeDir ?? os.homedir();
+  const pluginsPath = opts.pluginsPath ?? path.resolve(process.cwd(), 'config', 'plugins.yaml');
+  const pluginStore = new PluginStore(pluginsPath, homeDir);
+  await pluginStore.load();
+  const pluginScanner = new PluginScanner(pluginStore, homeDir);
+
   // Append-only daily ledger: one line per day, the balance at that day's 00:00.
   const historyDir = opts.usageHistoryDir ?? path.dirname(usagePath);
   const history = new UsageHistoryStore(historyDir);
@@ -67,6 +83,7 @@ export async function boot(opts: BootOptions = {}): Promise<FastifyInstance> {
 
   registerGatewayRoutes(app, store, supervisor, probe);
   registerUsageRoutes(app, usageStore, history);
+  registerPluginRoutes(app, pluginScanner, pluginStore);
 
   // Boot run appends today's line when the panel was not up at 00:00.
   if (opts.snapshot !== false) void scheduler.start();

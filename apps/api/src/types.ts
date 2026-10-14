@@ -125,6 +125,103 @@ export interface UsageProvider {
   spend?: UsageSpendMap;
 }
 
+/* ------------------------------------------------------------------ *
+ * Plugins tab
+ * ------------------------------------------------------------------ */
+
+export type PluginToolId = 'claudecode' | 'codex' | 'deepseek';
+export type PluginScope = 'user' | 'project';
+
+/** One installed plugin. `id` is `<name>@<marketplace>` — the key every tool uses natively. */
+export interface PluginEntry {
+  id: string;
+  name: string;
+  marketplace: string;
+  version?: string;
+  description?: string;
+  enabled: boolean;
+  /** ISO time the tool recorded for the install, when it records one. */
+  installedAt?: string;
+  updatedAt?: string;
+  /** Absolute path of the installed plugin directory, when the tool exposes one. */
+  path?: string;
+  /** Where the plugin came from (git url, npm package, local dir). */
+  source?: string;
+}
+
+export interface MarketplaceEntry {
+  id: string;
+  name: string;
+  description?: string;
+  source?: string;
+  installLocation?: string;
+  updatedAt?: string;
+}
+
+/** A marketplace plugin offered for install, flattened with its marketplace id. */
+export interface CatalogPlugin {
+  /** `<name>@<marketplace>`. */
+  id: string;
+  name: string;
+  marketplace: string;
+  description?: string;
+  version?: string;
+  author?: string;
+  category?: string;
+  homepage?: string;
+  tags?: string[];
+  /** Absolute local directory this plugin would be installed from. */
+  sourcePath?: string;
+  /** Human-readable origin: a relative path, a git url, or `github:owner/repo`. */
+  source?: string;
+}
+
+/** Everything one tool exposes under one scope root. */
+export interface PluginScopeView {
+  scope: PluginScope;
+  /** Absolute scan root: the home dir for user scope, the project dir for project scope. */
+  root: string;
+  /** False when the tool has no directory at this root (e.g. project never ran the tool). */
+  present: boolean;
+  plugins: PluginEntry[];
+  marketplaces: MarketplaceEntry[];
+  catalog: CatalogPlugin[];
+  /** False for tools whose install path this panel does not drive (deepseek bundles). */
+  canInstall: boolean;
+  /** Human-readable caveat surfaced in the UI (e.g. install unsupported). */
+  note?: string;
+  lastError?: string;
+}
+
+export interface PluginToolView {
+  id: PluginToolId;
+  label: string;
+  color: string;
+  /** The resident user scope. Always present — this is the tab's home view. */
+  userScope: PluginScopeView;
+}
+
+/** A project registered for project-scope management. Added by absolute path. */
+export interface PluginProject {
+  id: string;
+  name: string;
+  path: string;
+  addedAt?: string;
+}
+
+/** A project plus its per-tool scope views. */
+export interface PluginProjectView extends PluginProject {
+  scopes: Partial<Record<PluginToolId, PluginScopeView>>;
+}
+
+export interface PluginOverview {
+  refreshedAt: string;
+  /** Home directory the user scope was scanned from. */
+  home: string;
+  tools: PluginToolView[];
+  projects: PluginProjectView[];
+}
+
 export const DEFAULT_SERVER_CONFIG: ServerConfig = {
   bind: '127.0.0.1',
   port: 8787,

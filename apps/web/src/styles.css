@@ -64,6 +64,19 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  /* The plugins strip is the only horizontal scroller in the app. Without this,
+     a wide strip can push the page itself sideways, and the page-level bar
+     then shows up at the very bottom of the window instead of under the
+     columns. `clip` never creates a scroll container, so `position: sticky`
+     inside the tab keeps working. */
+  overflow-x: clip;
+}
+/* `clip` needs Safari 16+. Older Safari gets the classic fallback, which also
+   keeps the page from scrolling sideways (the app scrolls internally instead). */
+@supports not (overflow-x: clip) {
+  .gcp-app {
+    overflow-x: hidden;
+  }
 }
 
 .gcp-header {
@@ -136,6 +149,7 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .gcp-modal {
@@ -561,4 +575,656 @@ body {
   color: var(--text);
   font-family: inherit;
   font-size: 13px;
+}
+
+/* ---------------------------- plugins tab ---------------------------- */
+.gcp-plugins-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  min-width: 0;
+}
+.gcp-plugins-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.gcp-plugins-toolbar-title {
+  font-size: 14px;
+}
+.gcp-plugins-toolbar .gcp-usage-refreshed {
+  margin-left: auto;
+}
+
+/* Columns: tools | user scope | one per project.
+   Column width is FIXED. Adding projects never squeezes a column — once the
+   strip is wider than the window this element becomes the horizontal scroller
+   (min-width:0 keeps the flex/grid ancestors from stretching to fit instead). */
+.gcp-plugins-layout {
+  display: grid;
+  grid-template-columns: 180px;
+  grid-auto-flow: column;
+  grid-auto-columns: 320px;
+  gap: 12px;
+  align-items: stretch;
+  justify-content: start;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: scroll;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+
+  /* The horizontal scrollbar is pinned to the bottom of the window, not to the
+     bottom of the tallest column: the strip is sized to the space left under
+     the header/tabs/toolbar, so its bottom edge *is* the viewport bottom. */
+  --gcp-plugins-top: 182px; /* header 73 + tab strip 41 + tab padding 24 + toolbar 44 */
+  height: calc(100vh - var(--gcp-plugins-top));
+  height: calc(100dvh - var(--gcp-plugins-top));
+  min-height: 320px;
+  /* cancels .gcp-tab-content's bottom padding so the bar sits flush */
+  margin-bottom: -24px;
+  padding-bottom: 12px;
+}
+.gcp-plugins-layout::-webkit-scrollbar {
+  height: 8px;
+}
+.gcp-plugins-layout::-webkit-scrollbar-track {
+  background: var(--hover);
+  border-radius: 999px;
+}
+.gcp-plugins-layout::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted) 70%, transparent);
+  border-radius: 999px;
+}
+.gcp-plugins-layout::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* Column bodies scroll internally; keep their bar slim and unobtrusive. */
+.gcp-plugin-col-body,
+.gcp-install-list,
+.gcp-dir-list {
+  scrollbar-width: thin;
+}
+.gcp-plugin-col-body::-webkit-scrollbar,
+.gcp-install-list::-webkit-scrollbar,
+.gcp-dir-list::-webkit-scrollbar {
+  width: 6px;
+}
+.gcp-plugin-col-body::-webkit-scrollbar-thumb,
+.gcp-install-list::-webkit-scrollbar-thumb,
+.gcp-dir-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+/* ------------------------------ tool rail ------------------------------
+   Sticky on both axes: picking a tool stays possible while the project columns
+   are scrolled sideways. */
+.gcp-tool-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  align-self: stretch;
+  padding: 2px 6px 2px 0;
+  background: var(--bg);
+}
+.gcp-tool-rail-head {
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.gcp-tool-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--card-accent, var(--border));
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.gcp-tool-item:hover {
+  background: var(--hover);
+}
+.gcp-tool-item.active {
+  border-color: var(--card-accent, #3b82f6);
+  background: color-mix(in srgb, var(--card-accent, #3b82f6) 14%, transparent);
+}
+.gcp-tool-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.gcp-tool-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ---------------------------- scope column ----------------------------
+   A column is NOT a box: a summary card on top (总揽框), then standalone
+   plugin cards stacked below it. Columns fill the strip's height, so every
+   column's summary sits on the same line and the plugin cards line up. */
+.gcp-plugin-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+}
+.gcp-plugin-col-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--card-accent, var(--border));
+  border-radius: 10px;
+  background: var(--panel);
+}
+.gcp-plugin-col-stats {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--card-accent, var(--text));
+}
+.gcp-plugin-col-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.gcp-plugin-col-scope {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--card-accent, var(--text));
+}
+.gcp-plugin-col-name {
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gcp-plugin-col-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.gcp-plugin-col-tool {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--hover);
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.gcp-col-remove {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.gcp-col-remove:hover:not(:disabled) {
+  color: var(--err);
+  background: var(--hover);
+}
+.gcp-col-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.gcp-plugin-col-root {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  color: var(--muted);
+  word-break: break-all;
+}
+.gcp-plugin-col-error {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--err) 15%, transparent);
+  font-size: 11px;
+  color: var(--err);
+}
+.gcp-plugin-col-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  /* fade the top edge so a scrolled column does not clip a card mid-border */
+  mask-image: linear-gradient(to bottom, transparent 0, #000 10px, #000 100%);
+}
+.gcp-plugin-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.gcp-plugin-hint,
+.gcp-plugin-note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.gcp-plugin-note {
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--hover);
+}
+.gcp-plugin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* One plugin = one card. Neutral fill so it reads as a card inside the tinted
+   tool column, with the accent only on the left edge. */
+.gcp-plugin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--card-accent, var(--border));
+  border-radius: 8px;
+  background: var(--bg);
+}
+.gcp-plugin-row:hover {
+  border-color: var(--card-accent, var(--border));
+}
+.gcp-plugin-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.gcp-plugin-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-word;
+  line-height: 1.3;
+}
+.gcp-plugin-meta {
+  font-size: 10.5px;
+  color: var(--muted);
+  line-height: 1.35;
+  /* wrap instead of truncating: "openai-primary-runtime · v26.1007.21159" must
+     stay readable in a 320px column */
+  overflow-wrap: anywhere;
+}
+/* The marketplace is not shown inline any more; this opens the install dialog. */
+.gcp-market-open {
+  padding: 3px 10px;
+  border: 1px solid var(--card-accent, #3b82f6);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--card-accent, #3b82f6);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.gcp-market-open:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--card-accent, #3b82f6) 14%, transparent);
+}
+.gcp-market-open:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.gcp-plugin-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.gcp-plugin-actions button {
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.gcp-plugin-actions button:hover:not(:disabled) {
+  background: var(--hover);
+}
+.gcp-plugin-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.gcp-plugin-actions button.danger {
+  color: var(--err);
+}
+.gcp-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.gcp-switch input {
+  accent-color: var(--card-accent, #3b82f6);
+  cursor: pointer;
+}
+.gcp-plugin-search {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+}
+
+/* -------------------------- add-project column ------------------------- */
+.gcp-plugin-col-add {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  padding: 16px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.gcp-plugin-col-add:hover {
+  border-color: var(--card-accent, #3b82f6);
+  color: var(--text);
+  background: var(--hover);
+}
+.gcp-plugin-col-add.is-form {
+  align-items: stretch;
+  justify-content: flex-start;
+  cursor: default;
+  border-style: solid;
+  background: var(--panel);
+}
+.gcp-plugin-col-add.is-form:hover {
+  border-color: var(--border);
+  background: var(--panel);
+}
+.gcp-plugin-col-add-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.gcp-plugin-col-add-actions {
+  display: flex;
+  gap: 6px;
+}
+.gcp-plugin-col-add-actions button {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.gcp-plugin-col-add-actions button.primary {
+  border-color: transparent;
+  background: #3b82f6;
+  color: #fff;
+  font-weight: 600;
+}
+.gcp-plugin-col-add-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --------------------------- install dialog --------------------------- */
+.gcp-modal-card.is-wide {
+  width: min(680px, 100%);
+  max-height: 80vh;
+}
+.gcp-install-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.gcp-install-hint code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  word-break: break-all;
+}
+.gcp-install-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.gcp-install-field select {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+}
+.gcp-install-source {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  word-break: break-all;
+}
+.gcp-install-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  max-height: 46vh;
+  overflow-y: auto;
+  list-style: none;
+}
+.gcp-install-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.gcp-install-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.gcp-install-name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.gcp-install-version {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.gcp-install-desc {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.gcp-install-meta {
+  font-size: 10px;
+  color: var(--muted);
+  word-break: break-all;
+}
+.gcp-install-row button {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.gcp-install-row button:hover:not(:disabled) {
+  background: var(--hover);
+}
+.gcp-install-row button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------------------------- path picker ---------------------------- */
+.gcp-path-picker {
+  display: flex;
+  gap: 6px;
+}
+.gcp-path-picker input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+.gcp-path-picker button {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.gcp-path-picker button:hover:not(:disabled) {
+  background: var(--hover);
+}
+.gcp-dir-browser {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+.gcp-dir-current {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  color: var(--muted);
+  word-break: break-all;
+}
+.gcp-dir-error {
+  color: var(--err);
+}
+.gcp-dir-actions {
+  display: flex;
+  gap: 6px;
+}
+.gcp-dir-actions button {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.gcp-dir-actions button.primary {
+  border-color: transparent;
+  background: #3b82f6;
+  color: #fff;
+  font-weight: 600;
+}
+.gcp-dir-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.gcp-dir-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  list-style: none;
+}
+.gcp-dir-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+.gcp-dir-item:hover {
+  background: var(--hover);
+}
+.gcp-dir-icon {
+  color: var(--muted);
 }

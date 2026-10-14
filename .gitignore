@@ -17,9 +17,11 @@ test-results/
 config/gateways.yaml
 config/usage.yaml
 config/server.yaml
+config/plugins.yaml
 apps/api/config/gateways.yaml
 apps/api/config/usage.yaml
 apps/api/config/server.yaml
+apps/api/config/plugins.yaml
 .omc/
 *.log
 
