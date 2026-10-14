@@ -1,13 +1,19 @@
 import type { FastifyInstance } from 'fastify';
-import { fetchDeepSeekBalance } from '../services/deepseekBalance.js';
-import { fetchMinimaxRemains } from '../services/minimaxRemains.js';
+import { fetchAccountLiveData } from '../services/accountUsage.js';
+import { computeSpendByRange } from '../services/usageSpend.js';
+import type { UsageHistoryStore } from '../services/usageHistory.js';
 import type { UsageStore } from '../services/usageStore.js';
-import type { UsageAccount, UsageProvider, UsageRegion } from '../types.js';
+import type { UsageAccount, UsageProvider } from '../types.js';
 
-export function registerUsageRoutes(app: FastifyInstance, store: UsageStore): void {
+export function registerUsageRoutes(
+  app: FastifyInstance,
+  store: UsageStore,
+  history?: UsageHistoryStore,
+  now: () => Date = () => new Date(),
+): void {
   app.get('/api/usage', async () => {
     const accounts = store.list();
-    return Promise.all(accounts.map((account) => toPublic(account)));
+    return Promise.all(accounts.map((account) => toPublic(account, history, now())));
   });
 
   app.post<{ Body: UsageAccount }>('/api/usage', async (req, reply) => {
@@ -46,37 +52,31 @@ export function registerUsageRoutes(app: FastifyInstance, store: UsageStore): vo
   });
 }
 
-async function toPublic(account: UsageAccount): Promise<UsageProvider> {
+async function toPublic(
+  account: UsageAccount,
+  history: UsageHistoryStore | undefined,
+  today: Date,
+): Promise<UsageProvider> {
   const base = publicAccount(account);
-  if (!account.apiKey) {
-    return {
-      ...base,
-      lastError: '未配置 API key',
-    };
-  }
-  if (isProvider(account.provider, 'deepseek')) {
-    const result = await fetchDeepSeekBalance(account.apiKey);
-    return {
-      ...base,
-      kind: 'api',
-      credentialStatus: result.credentialStatus,
-      lastError: result.error,
-      balances: result.balances,
-    };
-  }
-  if (!isProvider(account.provider, 'minimax')) {
-    return {
-      ...base,
-      lastError: `暂不支持提供商 ${account.provider}`,
-    };
-  }
-  const region: UsageRegion = account.region === 'global' ? 'global' : 'cn';
-  const result = await fetchMinimaxRemains(account.apiKey, region);
-  return {
+  const live = await fetchAccountLiveData(account);
+  const next: UsageProvider = {
     ...base,
-    credentialStatus: result.credentialStatus,
-    lastError: result.error,
-    windows: result.windows,
+    kind: live.kind,
+    credentialStatus: live.credentialStatus,
+    lastError: live.lastError,
+    refreshedAt: today.toISOString(),
+    ...(live.balances ? { balances: live.balances } : {}),
+    ...(live.windows ? { windows: live.windows } : {}),
+  };
+
+  if (!live.balances?.length || !history) return next;
+  const log = await history.forAccount(account.id);
+  const spend = computeSpendByRange(log, live.balances, today);
+  const todaySpend = spend.today;
+  return {
+    ...next,
+    spend,
+    ...(todaySpend ? { todayCost: todaySpend.amount, currency: todaySpend.currency } : {}),
   };
 }
 
@@ -104,10 +104,6 @@ function isValidAccount(value: unknown): value is UsageAccount {
     (obj.kind === 'package' || obj.kind === 'api') &&
     (obj.usageUrl === undefined || isHttpUrl(obj.usageUrl))
   );
-}
-
-function isProvider(provider: string, expected: string): boolean {
-  return provider.trim().toLowerCase() === expected;
 }
 
 function isHttpUrl(value: unknown): boolean {

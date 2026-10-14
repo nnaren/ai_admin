@@ -7,12 +7,18 @@ import { HealthProbe } from './services/healthProbe.js';
 import { registerGatewayRoutes } from './routes/gateways.js';
 import { registerUsageRoutes } from './routes/usage.js';
 import { UsageStore } from './services/usageStore.js';
+import { UsageHistoryStore } from './services/usageHistory.js';
+import { captureDailyOpening, DailyCaptureScheduler } from './services/dailyBalanceCapture.js';
 import type { ServerConfig } from './types.js';
 
 export interface BootOptions {
   configPath?: string;
   yamlPath?: string;
   usagePath?: string;
+  /** Directory holding the append-only `usage-history-<id>.log` ledgers. */
+  usageHistoryDir?: string;
+  /** Set false in tests: the snapshot scheduler would otherwise call real provider APIs. */
+  snapshot?: boolean;
   configOverride?: Partial<ServerConfig>;
 }
 
@@ -51,10 +57,22 @@ export async function boot(opts: BootOptions = {}): Promise<FastifyInstance> {
   const usageStore = new UsageStore(usagePath);
   await usageStore.load();
 
+  // Append-only daily ledger: one line per day, the balance at that day's 00:00.
+  const historyDir = opts.usageHistoryDir ?? path.dirname(usagePath);
+  const history = new UsageHistoryStore(historyDir);
+
+  const scheduler = new DailyCaptureScheduler(() =>
+    captureDailyOpening(usageStore.list(), (account) => history.forAccount(account.id)),
+  );
+
   registerGatewayRoutes(app, store, supervisor, probe);
-  registerUsageRoutes(app, usageStore);
+  registerUsageRoutes(app, usageStore, history);
+
+  // Boot run appends today's line when the panel was not up at 00:00.
+  if (opts.snapshot !== false) void scheduler.start();
 
   app.addHook('onClose', async () => {
+    scheduler.stop();
     await store.close();
     probe.shutdown();
     await supervisor.shutdown();

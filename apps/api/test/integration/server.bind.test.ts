@@ -16,10 +16,25 @@ afterEach(async () => {
   await fs.rm(tmpDir, { recursive: true, force: true });
 });
 
+/** Isolated config paths + no snapshot scheduler: tests must never touch real keys or the network. */
+function bootOpts(): {
+  yamlPath: string;
+  usagePath: string;
+  usageHistoryDir: string;
+  snapshot: false;
+} {
+  return {
+    yamlPath: path.join(tmpDir, 'config', 'gateways.yaml'),
+    usagePath: path.join(tmpDir, 'config', 'usage.yaml'),
+    usageHistoryDir: path.join(tmpDir, 'config'),
+    snapshot: false,
+  };
+}
+
 describe('server bind/port', () => {
   it('F1: defaults to 127.0.0.1:8787 when no server.yaml exists', async () => {
     const port = 18787 + Math.floor(Math.random() * 1000);
-    const app = await boot({ yamlPath: path.join(tmpDir, 'config', 'gateways.yaml'), configOverride: { port } });
+    const app = await boot({ ...bootOpts(), configOverride: { port } });
     try {
       const addr = app.server.address();
       if (typeof addr === 'object' && addr !== null) {
@@ -38,7 +53,7 @@ describe('server bind/port', () => {
   it('F2: bind 0.0.0.0 listens on all interfaces', async () => {
     const port = 19787 + Math.floor(Math.random() * 1000);
     const app = await boot({
-      yamlPath: path.join(tmpDir, 'config', 'gateways.yaml'),
+      ...bootOpts(),
       configOverride: { bind: '0.0.0.0', port },
     });
     try {
@@ -52,13 +67,13 @@ describe('server bind/port', () => {
   it('R12: EADDRINUSE surfaced verbatim when port is held', async () => {
     const port = 20787 + Math.floor(Math.random() * 1000);
     const a = await boot({
-      yamlPath: path.join(tmpDir, 'config', 'gateways.yaml'),
+      ...bootOpts(),
       configOverride: { port },
     });
     try {
       await expect(
         boot({
-          yamlPath: path.join(tmpDir, 'config', 'gateways.yaml'),
+          ...bootOpts(),
           configOverride: { port },
         }),
       ).rejects.toThrow();
@@ -70,7 +85,7 @@ describe('server bind/port', () => {
   it('F3: no auth middleware — anonymous request returns 200', async () => {
     const port = 21787 + Math.floor(Math.random() * 1000);
     const app = await boot({
-      yamlPath: path.join(tmpDir, 'config', 'gateways.yaml'),
+      ...bootOpts(),
       configOverride: { port },
     });
     try {

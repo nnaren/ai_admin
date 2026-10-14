@@ -15,9 +15,9 @@ interface GatewayCardProps {
 export function GatewayCard({ status, onStart, onStop, onConfigure, busy }: GatewayCardProps): JSX.Element {
   const { gateway, running, pid, health, lastError, launchOpenUrl } = status;
   const displayUrl = resolveOpenUrl(gateway, launchOpenUrl);
-  // Always open via backend redirect so the click uses the latest auth token.
-  const openHref =
-    running || health?.ok ? `/api/gateways/${encodeURIComponent(gateway.id)}/open` : undefined;
+  // 「打开」goes straight to the address shown in 「地址」 below — no backend hop,
+  // so the click lands on the same page the operator can read and copy.
+  const openHref = running || health?.ok ? displayUrl : undefined;
   const now = useNow(health !== undefined);
   const color = resolveGatewayColor(gateway.color);
   const watermark = gateway.watermark?.trim() || gateway.name;
@@ -74,11 +74,7 @@ export function GatewayCard({ status, onStart, onStop, onConfigure, busy }: Gate
               target="_blank"
               rel="noopener noreferrer"
               data-testid={`open-${gateway.id}`}
-              title={
-                launchOpenUrl
-                  ? '打开网关页面'
-                  : '启动后需等待认证链接；若失败请停止后再启动'
-              }
+              title={launchOpenUrl ? '打开网关页面（含认证参数）' : `打开 ${displayUrl}`}
             >
               打开
             </a>

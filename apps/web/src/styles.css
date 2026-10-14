@@ -405,9 +405,25 @@ body {
 .gcp-quota-reset-time {
   color: var(--go);
 }
-.gcp-quota-used,
-.gcp-usage-money {
+.gcp-quota-used {
   color: var(--go);
+}
+/* 金额行：符号沿用正文色，数字绿色加粗；inline-flex 保证 ￥ 与数字贴在一起，
+   同时整段仍是一个 flex 子项，不会被 space-between 拉开 */
+.gcp-usage-money {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  color: var(--text);
+  font-weight: 400;
+}
+.gcp-money-amount {
+  color: var(--go);
+  font-weight: 700;
+}
+.gcp-money-sign {
+  color: var(--text);
+  font-weight: 400;
 }
 .gcp-quota-bar {
   height: 6px;
@@ -427,16 +443,44 @@ body {
 .gcp-usage-today {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 12px;
-  margin-top: 12px;
+  margin-top: 10px;
   font-size: 12px;
-  color: var(--muted);
-}
-.gcp-usage-today .value {
   color: var(--text);
 }
-.gcp-usage-today .gcp-usage-money {
-  color: var(--go);
+.gcp-usage-spend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text);
+}
+.gcp-usage-spend-label {
+  white-space: nowrap;
+}
+.gcp-usage-range {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 110px;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.gcp-usage-spend .gcp-usage-money {
+  margin-left: auto;
+  white-space: nowrap;
+}
+.gcp-usage-refreshed {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
 }
 .gcp-usage-card {
   display: flex;

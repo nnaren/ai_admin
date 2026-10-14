@@ -42,6 +42,19 @@ export type UsageVendor = string;
 export type UsageRegion = 'cn' | 'global';
 export type CredentialStatus = 'valid' | 'expired' | 'error';
 
+/** Consumption over one time dimension. `since` = when the opening balance was recorded. */
+export interface UsageSpend {
+  currency: string;
+  amount: number;
+  since: string;
+}
+
+/** Consumption keyed by every selectable time dimension; `null` = not on record yet. */
+export type UsageSpendMap = Record<
+  'today' | 'yesterday' | 'last7d' | 'last30d' | 'thisMonth' | 'lastMonth',
+  UsageSpend | null
+>;
+
 export interface UsageWindow {
   id: string;
   label: string;
@@ -79,10 +92,13 @@ export interface UsageProvider {
   hasKey?: boolean;
   credentialStatus?: CredentialStatus;
   lastError?: string;
+  /** ISO time this payload was produced — the toolbar renders its age. */
+  refreshedAt?: string;
   todayTokens?: number;
   todayCost?: number;
   currency?: string;
   balance?: number;
   balances?: UsageBalance[];
   windows?: UsageWindow[];
+  spend?: UsageSpendMap;
 }

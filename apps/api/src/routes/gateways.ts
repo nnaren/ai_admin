@@ -108,26 +108,27 @@ export function registerGatewayRoutes(
     const gateway = store.get(id);
     if (!gateway) return reply.code(404).send({ error: `gateway ${id} not found` });
 
-    // dsh can take a while to settle plugins before printing ?token=.
-    const deadline = Date.now() + 30_000;
-    while (!(await supervisor.resolveLaunchOpenUrl(id)) && Date.now() < deadline) {
-      if (!supervisor.isSpawned(id) && supervisor.getLivePid(id) === undefined) break;
-      await sleep(200);
+    // Only a process *this panel started* can still be printing ?token= (dsh waits
+    // for its plugins). An adopted process has no captured output to wait for, so
+    // do not stall the caller.
+    let launchOpenUrl = await supervisor.resolveLaunchOpenUrl(id);
+    if (!launchOpenUrl && supervisor.isSpawned(id)) {
+      const deadline = Date.now() + 30_000;
+      while (Date.now() < deadline) {
+        await sleep(200);
+        launchOpenUrl = await supervisor.resolveLaunchOpenUrl(id);
+        if (launchOpenUrl) break;
+        if (!supervisor.isSpawned(id)) break;
+      }
     }
 
-    const launchOpenUrl = await supervisor.resolveLaunchOpenUrl(id);
     if (launchOpenUrl) {
       return reply.redirect(launchOpenUrl);
     }
 
-    // Adopted after API restart, or still no token: never fall back to bare openUrl
-    // for a live process (dsh returns 401 without ?token=).
-    if (supervisor.isSpawned(id) || supervisor.getLivePid(id) !== undefined) {
-      return reply.code(503).type('text/plain').send(
-        '认证链接尚未就绪。请等网关完全启动后再点「打开」；若仍失败，请先停止再启动该网关。\n',
-      );
-    }
-
+    // No token (adopted process, or still starting): fall back to the configured
+    // address. A gateway that demands ?token= will answer 401, which is a truthful
+    // signal — better than hanging for 30 s and then failing.
     const fallback = configuredOpenUrl(gateway);
     if (!fallback) return reply.code(404).send({ error: 'no open url configured' });
     return reply.redirect(fallback);

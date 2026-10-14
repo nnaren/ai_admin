@@ -57,6 +57,40 @@ healthProbeTimeoutMs: 2000
 
 ---
 
+## Usage tab (`/usage`)
+
+Accounts live in `apps/api/config/usage.yaml` (template: `config/usage.yaml.example`). `apiKey` is stored there and **never** returned to the browser — `/api/usage` only exposes `hasKey`.
+
+**DeepSeek (`kind: api`)** — the panel reads `GET https://api.deepseek.com/user/balance` on every `GET /api/usage`. That endpoint is the *only* balance data the public API key can reach: DeepSeek publishes no per-day token or cost endpoint (`/user/usage`, `/user/statistics`, … all 404), and the dashboard endpoints under `platform.deepseek.com/api/v0/usage/*` require a browser session behind AWS WAF.
+
+**Consumption = opening balance − closing balance.** DeepSeek exposes no "usage today" API, so the backend measures it from daily balance records.
+
+1. `DailyCaptureScheduler` appends **one line per local day**, ~1 s after 00:00, to `apps/api/config/usage-history-<accountId>.log` — right next to `usage.yaml`. The file is plain text, one record per day:
+
+   ```
+   # account=deepseek currency=CNY
+   2026-10-13T00:00:01   5.17
+   2026-10-14T00:00:01   3.17
+   ```
+
+2. **Append-only, forever.** The backend only ever appends a day that has no line yet. It never truncates, rewrites, prunes or deletes — closing and restarting the service, or crashing mid-write, leaves the whole history intact. A capture also runs on boot, so a panel that was down at 00:00 still gets its line. A failed capture retries after 60 s.
+3. Because each day stores only its own balance, every dimension is `opening of the range's first day − opening of the day after its last day`, with the day after today replaced by the live balance:
+   - 今天 = 今天的 0 点余额 − 实时余额
+   - 昨天 = 昨天的 0 点余额 − 今天的 0 点余额
+   - 近 7 天 / 近 30 天 = 起始日 0 点余额 − 实时余额
+   - 本月 = 本月 1 号 0 点余额 − 实时余额
+   - 上月 = 上月 1 号 0 点余额 − 本月 1 号 0 点余额
+
+   `GET /api/usage` returns the resulting `spend` map; `null` means the range's opening day has no record yet.
+4. The card's 「消费金额」 row switches dimension locally — no refetch. `since` carries the opening record's timestamp and shows up in the row's tooltip.
+5. `todayTokens` stays unset — token counts are not available from the official API. Topping up mid-period makes the amount go negative; that is the honest arithmetic, not a bug.
+
+The Usage tab auto-refreshes every 5 minutes on the absolute grid (…:00:10) using the refresh button's code path, and shows the age of the last refresh next to the button.
+
+Pass `snapshot: false` to `boot()` in tests — the scheduler would otherwise call real provider APIs with the real `config/usage.yaml`.
+
+---
+
 ## Adding a new tab (extension contract)
 
 The `TabHost` is intentionally **generic**: it does not import the gateways schema. To add a new tab:

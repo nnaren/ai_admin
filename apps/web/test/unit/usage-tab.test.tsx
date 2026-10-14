@@ -52,4 +52,65 @@ describe('UsageTab', () => {
     await screen.findByTestId('usage-deepseek');
     expect(listUsage).toHaveBeenCalledTimes(2);
   });
+
+  it('shows how long ago the data was refreshed', async () => {
+    vi.mocked(listUsage).mockResolvedValue([
+      {
+        id: 'deepseek',
+        provider: 'DeepSeek',
+        kind: 'api',
+        refreshedAt: new Date(Date.now() - 3 * 60_000).toISOString(),
+      },
+    ]);
+    render(<UsageTab />);
+    await screen.findByTestId('usage-deepseek');
+    expect(screen.getByTestId('usage-refreshed')).toHaveTextContent('3分钟前更新');
+  });
+
+  it('shows a placeholder before the first response arrives', () => {
+    vi.mocked(listUsage).mockReturnValue(new Promise(() => {}));
+    render(<UsageTab />);
+    expect(screen.getByTestId('usage-refreshed')).toHaveTextContent('未刷新');
+  });
+
+  it('shares one time dimension across every card', async () => {
+    vi.mocked(listUsage).mockResolvedValue([
+      {
+        id: 'a',
+        provider: 'DeepSeek',
+        kind: 'api',
+        balances: [{ currency: 'CNY', totalBalance: 10 }],
+        spend: {
+          today: { currency: 'CNY', amount: 1, since: '2026-10-14T00:00:01.000Z' },
+          yesterday: { currency: 'CNY', amount: 2, since: '2026-10-13T00:00:01.000Z' },
+          last7d: null,
+          last30d: null,
+          thisMonth: null,
+          lastMonth: null,
+        },
+      },
+      {
+        id: 'b',
+        provider: 'DeepSeek-B',
+        kind: 'api',
+        balances: [{ currency: 'CNY', totalBalance: 5 }],
+        spend: {
+          today: { currency: 'CNY', amount: 3, since: '2026-10-14T00:00:01.000Z' },
+          yesterday: null,
+          last7d: null,
+          last30d: null,
+          thisMonth: null,
+          lastMonth: null,
+        },
+      },
+    ]);
+    render(<UsageTab />);
+    await screen.findByTestId('usage-a');
+    expect(screen.getByTestId('spend-a')).toHaveTextContent('¥1.00');
+
+    fireEvent.change(screen.getByTestId('range-a'), { target: { value: 'yesterday' } });
+    expect(screen.getByTestId('range-b')).toHaveValue('yesterday');
+    expect(screen.getByTestId('spend-a')).toHaveTextContent('¥2.00');
+    expect(screen.getByTestId('spend-b')).toHaveTextContent('—');
+  });
 });

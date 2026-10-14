@@ -1,21 +1,38 @@
 import { useEffect, useState } from 'react';
 import { resolveGatewayColor } from '../gateways/colors.js';
-import { formatMoney, formatTokens } from './formatMoney.js';
+import { splitMoney, type MoneyParts } from './formatMoney.js';
 import { formatResetIn, usedBarPercent } from './formatReset.js';
+import {
+  formatSpendTitle,
+  USAGE_RANGES,
+  USAGE_RANGE_LABELS,
+  type UsageRange,
+} from './usageRanges.js';
 import type { UsageProvider, UsageWindow } from '../../types.js';
 
 export function UsageCard({
   provider,
   onConfigure,
+  range = 'today',
+  onRangeChange,
 }: {
   provider: UsageProvider;
   onConfigure?: (provider: UsageProvider) => void;
+  /** Selected time dimension; shared by every card so they switch together. */
+  range?: UsageRange;
+  onRangeChange?: (range: UsageRange) => void;
 }): JSX.Element {
   const color = resolveGatewayColor(provider.color);
   const now = useNow(true);
   const kindLabel = provider.kind === 'package' ? '套餐' : 'API';
   const officialUsageUrl = getOfficialUsageUrl(provider.usageUrl);
   const watermark = provider.watermark?.trim() || provider.provider;
+  const spend =
+    provider.spend?.[range] ??
+    // Legacy payload without `spend`: only 今天 had a value.
+    (range === 'today' && provider.todayCost !== undefined
+      ? { currency: provider.currency ?? 'CNY', amount: provider.todayCost, since: '' }
+      : null);
 
   return (
     <article
@@ -70,7 +87,7 @@ export function UsageCard({
         >
           <span>余额（{balance.currency}）</span>
           <span className="value gcp-usage-money">
-            {formatMoney(balance.totalBalance, balance.currency)}
+            <Money value={splitMoney(balance.totalBalance, balance.currency)} />
           </span>
         </div>
       ))}
@@ -78,18 +95,32 @@ export function UsageCard({
         <div className="gcp-usage-today" data-testid={`balance-${provider.id}`}>
           <span>余额</span>
           <span className="value gcp-usage-money">
-            {formatMoney(provider.balance, provider.currency)}
+            <Money value={splitMoney(provider.balance, provider.currency)} />
           </span>
         </div>
       )}
-      {(provider.todayTokens !== undefined || provider.todayCost !== undefined) && (
-        <div className="gcp-usage-today" data-testid={`today-${provider.id}`}>
-          <span>今日</span>
-          <span className="value">
-            {formatTokens(provider.todayTokens)} ·{' '}
-            <span className="gcp-usage-money">
-              {formatMoney(provider.todayCost, provider.currency)}
-            </span>
+      {provider.spend !== undefined && (
+        <div
+          className="gcp-usage-spend"
+          data-testid={`today-${provider.id}`}
+          title={spend ? formatSpendTitle(spend, USAGE_RANGE_LABELS[range]) : '暂无消费记录'}
+        >
+          <span className="gcp-usage-spend-label">消费金额</span>
+          <select
+            className="gcp-usage-range"
+            data-testid={`range-${provider.id}`}
+            aria-label={`${provider.provider} 消费时间维度`}
+            value={range}
+            onChange={(e) => onRangeChange?.(e.target.value as UsageRange)}
+          >
+            {USAGE_RANGES.map((item) => (
+              <option key={item} value={item}>
+                {USAGE_RANGE_LABELS[item]}
+              </option>
+            ))}
+          </select>
+          <span className="value gcp-usage-money" data-testid={`spend-${provider.id}`}>
+            {spend ? <Money value={splitMoney(spend.amount, spend.currency)} /> : '—'}
           </span>
         </div>
       )}
@@ -107,6 +138,20 @@ export function UsageCard({
         </div>
       )}
     </article>
+  );
+}
+
+/**
+ * Money split into pieces: the symbol keeps the label color, only the number
+ * itself carries the emphasis color. Must stay wrapped in a single element by the
+ * caller — as loose siblings inside a `space-between` row they get pushed apart.
+ */
+function Money({ value }: { value: MoneyParts }): JSX.Element {
+  return (
+    <>
+      <span className="gcp-money-sign">{value.symbol}</span>
+      <span className="gcp-money-amount">{value.amount}</span>
+    </>
   );
 }
 

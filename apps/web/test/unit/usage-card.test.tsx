@@ -11,8 +11,6 @@ describe('UsageCard', () => {
           provider: 'Anthropic',
           kind: 'package',
           color: 'amber',
-          todayTokens: 0,
-          todayCost: 0,
           windows: [
             {
               id: 'fiveHour',
@@ -50,12 +48,12 @@ describe('UsageCard', () => {
     expect(screen.getByTestId('quota-week').querySelector('.gcp-quota-fill')).toHaveStyle({
       width: '51%',
     });
-    expect(screen.getByTestId('today-anthropic')).toHaveTextContent('0 tokens');
-    expect(screen.getByTestId('today-anthropic')).toHaveTextContent('$0.00');
+    // A package account has quota windows, not a consumption row.
+    expect(screen.queryByTestId('today-anthropic')).not.toBeInTheDocument();
     expect(screen.queryByText('官网查看用量')).not.toBeInTheDocument();
   });
 
-  it('shows API balance instead of quota windows', () => {
+  it('shows API balance plus a consumption row with a time-dimension picker', () => {
     render(
       <UsageCard
         provider={{
@@ -64,9 +62,15 @@ describe('UsageCard', () => {
           watermark: 'DEEPSEEK',
           kind: 'api',
           usageUrl: 'https://platform.deepseek.com/usage',
-          todayTokens: 23400,
-          todayCost: 0.12,
           balances: [{ currency: 'CNY', totalBalance: 16.8 }],
+          spend: {
+            today: { currency: 'CNY', amount: 3.17, since: '2026-10-14T00:00:01.000Z' },
+            yesterday: { currency: 'CNY', amount: 1.2, since: '2026-10-13T00:00:01.000Z' },
+            last7d: null,
+            last30d: null,
+            thisMonth: { currency: 'CNY', amount: 12.4, since: '2026-10-01T00:00:01.000Z' },
+            lastMonth: null,
+          },
         }}
       />,
     );
@@ -75,16 +79,60 @@ describe('UsageCard', () => {
     expect(screen.getByTestId('usage-deepseek')).toHaveAttribute('data-watermark', 'DEEPSEEK');
     expect(screen.getByTestId('balance-deepseek-cny')).toHaveTextContent('余额（CNY）');
     expect(screen.getByTestId('balance-deepseek-cny')).toHaveTextContent('¥16.80');
-    expect(screen.getByTestId('balance-deepseek-cny').querySelector('.gcp-usage-money')).toHaveTextContent(
-      '¥16.80',
-    );
     expect(screen.queryByText('5h 限额')).not.toBeInTheDocument();
-    expect(screen.getByTestId('today-deepseek')).toHaveTextContent('23,400 tokens');
-    expect(screen.getByTestId('today-deepseek').querySelector('.gcp-usage-money')).toHaveTextContent('$0.12');
+    expect(screen.getByTestId('today-deepseek')).toHaveTextContent('消费金额');
+    expect(screen.getByTestId('spend-deepseek')).toHaveTextContent('¥3.17');
+    expect(screen.getByTestId('spend-deepseek')).not.toHaveTextContent('CNY');
+    expect(screen.getByTestId('range-deepseek')).toHaveValue('today');
     expect(screen.getByTestId('official-usage-deepseek')).toHaveAttribute(
       'href',
       'https://platform.deepseek.com/usage',
     );
+  });
+
+  it('switches the time dimension and reports an unrecorded range', () => {
+    const onRangeChange = vi.fn();
+    render(
+      <UsageCard
+        provider={{
+          id: 'deepseek',
+          provider: 'DeepSeek',
+          kind: 'api',
+          balances: [{ currency: 'CNY', totalBalance: 16.8 }],
+          spend: {
+            today: { currency: 'CNY', amount: 3.17, since: '2026-10-14T00:00:01.000Z' },
+            yesterday: null,
+            last7d: null,
+            last30d: null,
+            thisMonth: null,
+            lastMonth: null,
+          },
+        }}
+        range="last7d"
+        onRangeChange={onRangeChange}
+      />,
+    );
+
+    expect(screen.getByTestId('range-deepseek')).toHaveValue('last7d');
+    expect(screen.getByTestId('spend-deepseek')).toHaveTextContent('—');
+    fireEvent.change(screen.getByTestId('range-deepseek'), { target: { value: 'yesterday' } });
+    expect(onRangeChange).toHaveBeenCalledWith('yesterday');
+  });
+
+  it('falls back to todayCost when the payload predates spend', () => {
+    render(
+      <UsageCard
+        provider={{
+          id: 'deepseek',
+          provider: 'DeepSeek',
+          kind: 'api',
+          todayCost: 0.12,
+          currency: 'CNY',
+          balances: [{ currency: 'CNY', totalBalance: 16.8 }],
+        }}
+      />,
+    );
+    expect(screen.queryByTestId('range-deepseek')).not.toBeInTheDocument();
   });
 
   it('opens configure from the gear', () => {

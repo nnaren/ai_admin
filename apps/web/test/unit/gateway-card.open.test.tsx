@@ -28,11 +28,34 @@ describe('GatewayCard Open button', () => {
       />,
     );
     const link = screen.getByTestId('open-dsh');
-    expect(link).toHaveAttribute('href', '/api/gateways/dsh/open');
+    expect(link).toHaveAttribute('href', 'http://127.0.0.1:3080');
     expect(link).toHaveAttribute('target', '_blank');
   });
 
-  it('opens via backend redirect so auth tokens stay fresh', () => {
+  it('opens the exact address shown in the 地址 field', () => {
+    render(
+      <GatewayCard
+        status={status({
+          running: true,
+          pid: 1,
+          gateway: {
+            id: 'dsh',
+            name: 'dsh web',
+            startCommand: 'dsh web',
+            port: 3080,
+            openUrl: 'http://127.0.0.1:3080/',
+          },
+        })}
+        onStart={() => {}}
+        onStop={() => {}}
+        busy={false}
+      />,
+    );
+    expect(screen.getByTestId('open-dsh')).toHaveAttribute('href', 'http://127.0.0.1:3080/');
+    expect(screen.getByText('http://127.0.0.1:3080/')).toBeInTheDocument();
+  });
+
+  it('carries the launch token through when one was captured', () => {
     render(
       <GatewayCard
         status={status({
@@ -45,7 +68,8 @@ describe('GatewayCard Open button', () => {
         busy={false}
       />,
     );
-    expect(screen.getByTestId('open-dsh')).toHaveAttribute('href', '/api/gateways/dsh/open');
+    // Real token in the link, masked on screen.
+    expect(screen.getByTestId('open-dsh')).toHaveAttribute('href', 'http://127.0.0.1:3080/?token=abc');
     expect(screen.getByText('http://127.0.0.1:3080/?token=***')).toBeInTheDocument();
   });
 
@@ -172,7 +196,24 @@ describe('GatewayCard Open button', () => {
     expect(onConfigure).toHaveBeenCalledWith(expect.objectContaining({ id: 'dsh' }));
   });
 
-  it('shows Open via API redirect whenever the gateway is running', () => {
+  it('derives Open from the port when no URL is configured', () => {
+    render(
+      <GatewayCard
+        status={{
+          gateway: { id: 'bare', name: 'Bare', startCommand: 'sleep 1', port: 9000 },
+          running: true,
+          pid: 2,
+        }}
+        onStart={() => {}}
+        onStop={() => {}}
+        busy={false}
+      />,
+    );
+    expect(screen.getByTestId('open-bare')).toHaveAttribute('href', 'http://127.0.0.1:9000');
+    expect(screen.getByText('进程运行中')).toBeInTheDocument();
+  });
+
+  it('hides Open when there is no address to open', () => {
     render(
       <GatewayCard
         status={{
@@ -185,8 +226,7 @@ describe('GatewayCard Open button', () => {
         busy={false}
       />,
     );
-    expect(screen.getByTestId('open-bare')).toHaveAttribute('href', '/api/gateways/bare/open');
-    expect(screen.getByText('进程运行中')).toBeInTheDocument();
+    expect(screen.queryByTestId('open-bare')).not.toBeInTheDocument();
   });
 
   it('asks for confirmation before stopping', () => {
